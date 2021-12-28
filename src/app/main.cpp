@@ -13,17 +13,39 @@
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
 
-#include "font_data.h"
+#include "font_data_Inconsolata.h"
+#include "font_data_Lato.h"
+
+struct UIStyle {
+	ImFont* consoleFont = nullptr;
+	ImFont* textFont = nullptr;
+};
+
+struct UILine {
+
+	enum class Type {
+		INPUT, OUTPUT, ERROR
+	};
+
+	const std::string text;
+	const Type type;
+	// TODO: more complex coloring info.
+	// TODO: move type assignment of subsets into the calculator itself (shared by app and CL).
+
+	UILine(const std::string& atext, Type atype ) : text(atext), type(atype) {
+
+	}
+};
 
 struct UIState {
-	std::vector<std::string> lines;
+	std::vector<UILine> lines;
 	std::vector<std::string> commands;
 	std::string savedPartialCommand;
 	int savedCursor = 0;
 	int historyPos = -1;
 };
 
-GLFWwindow* createWindow(int w, int h) {
+GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 
 	// Initialize glfw, which will create and setup an OpenGL context.
 	if(!glfwInit()) {
@@ -61,14 +83,22 @@ GLFWwindow* createWindow(int w, int h) {
 
 	ImGui::CreateContext();
 
-	ImFontConfig font = ImFontConfig();
-	font.FontData = (void*)(fontData);
-	font.FontDataSize = size_fontData;
-	font.SizePixels = 15.0f;
+	ImFontConfig fontLato = ImFontConfig();
+	fontLato.FontData = (void*)(fontDataLato);
+	fontLato.FontDataSize = size_fontDataLato;
+	fontLato.SizePixels = 18.0f;
 	// Font data is static
-	font.FontDataOwnedByAtlas = false;
+	fontLato.FontDataOwnedByAtlas = false;
+	ImFontConfig fontConsole = ImFontConfig();
+	fontConsole.FontData = (void*)(fontDataInconsolata);
+	fontConsole.FontDataSize = size_fontDataInconsolata;
+	fontConsole.SizePixels = 18.0f;
+	// Font data is static
+	fontConsole.FontDataOwnedByAtlas = false;
+
 	ImGuiIO & io = ImGui::GetIO();
-	io.Fonts->AddFont(&font);
+	uiStyle.textFont = io.Fonts->AddFont(&fontLato);
+	uiStyle.consoleFont = io.Fonts->AddFont(&fontConsole);
 
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 330");
@@ -83,7 +113,7 @@ GLFWwindow* createWindow(int w, int h) {
 	style.GrabMinSize = 18;
 	style.FrameBorderSize = 0;
 	style.WindowBorderSize = 0;
-	style.FrameRounding = 12;
+	style.FrameRounding = 4;
 	style.GrabRounding = 12;
 	style.PopupBorderSize = 0;
 	style.PopupRounding = 3;
@@ -169,7 +199,10 @@ int textCallback(ImGuiInputTextCallbackData* data){
 
 int main(int, char** ){
 
-	GLFWwindow* window = createWindow(830, 620);
+	UIStyle style;
+	UIState state;
+
+	GLFWwindow* window = createWindow(830, 620, style);
 
 	if(!window){
 		Log::Error() << "Unable to create window." << std::endl;
@@ -178,13 +211,13 @@ int main(int, char** ){
 
 	sr_gui_init();
 
-	UIState state;
 
 	int winW, winH;
 
 	const unsigned int winFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar;
 
 	char buffer[1024];
+	Calculator calculator;
 
 	while(!glfwWindowShouldClose(window)) {
 
@@ -196,17 +229,22 @@ int main(int, char** ){
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
+
 		ImGui::ShowDemoWindow();
 		glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		if(ImGui::BeginMainMenuBar()){
 
-
 			if(ImGui::BeginMenu("File")){
-				if(ImGui::MenuItem("Clear")){
-					state.lines.clear();
-					// Don't clear commands.
+
+				if(ImGui::MenuItem("Clear...")){
+					const int result = sr_gui_ask_choice("Calco", "Are you sure you want to clear?",
+														 SR_GUI_MESSAGE_LEVEL_WARN, "Yes", "No", "");
+					if(result == SR_GUI_BUTTON0){
+						state.lines.clear();
+						// Don't clear commands.
+					}
 				}
 				ImGui::Separator();
 				if(ImGui::MenuItem("Quit")){
@@ -233,7 +271,28 @@ int main(int, char** ){
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1)); // Tighten spacing
 			const size_t lineCount = state.lines.size();
 			for(size_t lid = 0; lid < lineCount; ++lid){
-				ImGui::TextUnformatted(state.lines[lid].c_str());
+				const UILine& line = state.lines[lid];
+
+				bool pushedStyle = false;
+				if(line.type == UILine::Type::ERROR){
+					ImGui::PushFont(style.consoleFont);
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
+					pushedStyle = true;
+				}
+
+				if(line.type == UILine::Type::OUTPUT){
+					ImGui::PushFont(style.consoleFont);
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.8f, 0.1f, 1.0f));
+					pushedStyle = true;
+				}
+
+				ImGui::TextUnformatted(line.text.c_str());
+
+				if(pushedStyle){
+					ImGui::PopStyleColor();
+					ImGui::PopFont();
+				}
+
 			}
 			ImGui::PopStyleVar();
 
@@ -253,11 +312,15 @@ int main(int, char** ){
 				std::string newLine(buffer);
 				buffer[0] = '\0';
 				if(!newLine.empty()){
-					state.lines.push_back(newLine);
+					state.lines.emplace_back(newLine, UILine::Type::INPUT);
 					state.commands.push_back(newLine);
 					state.historyPos = -1;
 					state.savedPartialCommand = "";
 					state.savedCursor = 0;
+					std::string resultLine;
+					const bool success = calculator.evaluate(newLine, resultLine);
+					state.lines.emplace_back(resultLine, success ? UILine::Type::OUTPUT : UILine::Type::ERROR);
+					// TODO: output result properly.
 				}
 				reclaimFocus = true;
 			}
@@ -271,9 +334,7 @@ int main(int, char** ){
 		}
 		ImGui::End();
 
-
 		//sr_gui_show_message("Calco", "Invalid operation", SR_GUI_MESSAGE_LEVEL_ERROR);
-
 
 		// Render the interface.
 		ImGui::Render();
