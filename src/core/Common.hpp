@@ -10,6 +10,10 @@
 #include <memory>
 #include <cmath>
 
+#include <glm/glm.hpp>
+#include <glm/common.hpp>
+#include <glm/gtc/constants.hpp>
+
 typedef unsigned char uchar;
 typedef unsigned int  uint;
 typedef unsigned long ulong;

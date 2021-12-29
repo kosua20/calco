@@ -1,7 +1,6 @@
 #pragma once
 #include "core/Common.hpp"
 #include <unordered_map>
-#include <glm/gtc/constants.hpp>
 
 enum class Operator {
 	OpenParenth, CloseParenth, Plus, Minus, Product, Divide, Power, Modulo, Assign, ShiftLeft, ShiftRight, BitOr, BitAnd, BitNot, BitXor, BoolOr, BoolAnd, BoolNot, BoolXor, QuestionMark, Colon, LessThan, GreaterThan, LessThanEqual, GreaterThanEqual, Equal, Different, Comma, Dot
@@ -37,13 +36,36 @@ struct Status {
 
 struct Value {
 
-	double scalar;
+	enum Type {
+		BOOL = 0,
+		INTEGER,
+		FLOAT,
+		VEC4,
+		MAT4,
+		STRING
+	};
+
+	Value(bool val) : type(BOOL), b(val){}
+
+	Value(long long val) : type(INTEGER), i(val){}
+
+	Value(double val) : type(FLOAT), f(val){}
+
+	Value(const std::string& val) : type(STRING), str(val){}
+
+	Value(const glm::mat4& val) : type(MAT4), mat(val){}
+	
+	Value(const glm::vec4& val) : type(VEC4), vec(val){}
+
+	Value convert(const Type& target, bool& success) const;
+
+	Type type;
+	glm::mat4 mat;
+	glm::vec4 vec;
+	double f;
+	long long i;
+	bool b;
 	std::string str;
-
-	Value(double val) : scalar(val){}
-
-	Value(const std::string& val) : str(val){}
-
 };
 
 
@@ -129,11 +151,11 @@ public:
 class Literal final : public Expression {
 public:
 
-	Literal(double _val) : val(_val){}
+	Literal(const Value& _val) : val(_val){}
 
 	Value evaluate(TreeVisitor& visitor) override;
 
-	const double val;
+	const Value val;
 };
 
 class Variable final : public Expression {

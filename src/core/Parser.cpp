@@ -431,12 +431,12 @@ Parser::Result Parser::terminal(){
 	const Token& current = peek();
 	if(current.type == Token::Type::Float){
 		advance();
-		return Expression::Ptr(new Literal(current.fVal));
+		return Expression::Ptr(new Literal(Value(current.fVal)));
 	}
 	if(current.type == Token::Type::Integer){
 		advance();
 		// For now, just store as float.
-		return Expression::Ptr(new Literal(double(current.iVal)));
+		return Expression::Ptr(new Literal(Value(current.iVal)));
 	}
 	if(current.type == Token::Type::Identifier){
 		advance();

@@ -74,7 +74,9 @@ Status Scanner::scan(){
 		const int startPosition = position;
 
 		// All numbers, whatever their base, start with a digit or a dot followed by a digit.
-		if((c0 >= '0' && c0 <= '9') || (c0 == '.' && (c1 >= '0' && c1 <= '9'))){
+		// Except if the previous token was an identifier, in which case the dot is for an accessor.
+		const bool isMember = !_tokens.empty() && (_tokens.back().type == Token::Type::Identifier);
+		if((c0 >= '0' && c0 <= '9') || (c0 == '.' && !isMember && (c1 >= '0' && c1 <= '9'))){
 			int base = 10;
 			bool isFloat = false;
 
