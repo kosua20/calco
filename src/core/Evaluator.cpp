@@ -1,11 +1,5 @@
 #include "core/Evaluator.hpp"
 
-Value TreeLogger::process(const Expression& exp) {
-	(void)exp;
-	assert(false);
-	return std::string("Empty expression");
-}
-
 Value TreeLogger::process(const Unary& exp)  {
 	const std::string str = exp.exp->evaluate(*this).str;
 	return "( " + OperatorString(exp.op) + str + " )";

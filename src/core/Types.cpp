@@ -1,9 +1,5 @@
 #include "core/Types.hpp"
 
-Value Expression::evaluate(TreeVisitor& visitor)  {
-	return visitor.process(*this);
-}
-
 Value Unary::evaluate(TreeVisitor& visitor)  {
 	return visitor.process(*this);
 }

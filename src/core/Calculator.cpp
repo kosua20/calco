@@ -47,13 +47,17 @@ bool Calculator::evaluate(const std::string& input, std::string& output){
 		}
 		return false;
 	}
-	
+	// Three possible cases:
+	// * general expression to evaluate: evaluate value based on context and log
+	// * variable definition: evaluate value based on context and store (value+name) in context
+	// * function definition: replace existing variables by their value, then store (tree+name+args names) in context
+
 	// Evaluate the AST
 	Evaluator evaluator(parser.tree());
 	std::string log = evaluator.log();
 	output = log;
 
-	
+
 
 	return true;
 }

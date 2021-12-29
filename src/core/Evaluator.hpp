@@ -4,7 +4,6 @@
 
 class TreeLogger final : public TreeVisitor {
 public:
-	Value process(const Expression& exp) override;
 	Value process(const Unary& exp) override;
 	Value process(const Binary& exp) override;
 	Value process(const Ternary& exp) override;
@@ -18,7 +17,7 @@ public:
 
 class Evaluator {
 public:
-	Evaluator(const std::shared_ptr<Node>& tree) : _tree(tree) {
+	Evaluator(const Expression::Ptr& tree) : _tree(tree) {
 
 	}
 
@@ -26,6 +25,6 @@ public:
 
 
 private:
-	std::shared_ptr<Node> _tree;
+	Expression::Ptr _tree;
 
 };

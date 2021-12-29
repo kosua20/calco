@@ -47,7 +47,6 @@ struct Value {
 };
 
 
-class Expression;
 class Unary;
 class Binary;
 class Ternary;
@@ -60,7 +59,6 @@ class FunctionCall;
 
 class TreeVisitor {
 public:
-	virtual Value process(const Expression& exp) = 0;
 	virtual Value process(const Unary& exp) = 0;
 	virtual Value process(const Binary& exp) = 0;
 	virtual Value process(const Ternary& exp) = 0;
@@ -72,19 +70,11 @@ public:
 	virtual Value process(const FunctionCall& exp) = 0;
 };
 
+class Expression {
 
-class Node {
 public:
 
 	virtual Value evaluate(TreeVisitor& visitor) = 0;
-
-};
-
-class Expression : public Node {
-
-public:
-
-	virtual Value evaluate(TreeVisitor& visitor) override;
 
 	using Ptr = std::shared_ptr<Expression>;
 

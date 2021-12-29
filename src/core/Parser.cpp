@@ -177,7 +177,7 @@ Parser::Result Parser::statement(){
 			// Parse the rest of the line.
 			Result expr = expression();
 			EXIT_IF_FAILED(expr);
-
+			
 			return Expression::Ptr(new FunctionDef(name, arguments, expr));
 
 		}

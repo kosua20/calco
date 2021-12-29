@@ -11,7 +11,7 @@ public:
 
 	Status parse();
 
-	const std::shared_ptr<Node>& tree() const {
+	const Expression::Ptr& tree() const {
 		return _tree;
 	}
 
@@ -34,18 +34,6 @@ private:
 	Operator previousOp() const;
 
 	using Result = Expression::Ptr;
-	/*struct Result {
-
-		Result(const Expression::Ptr& aexp) : exp(aexp), success(aexp != nullptr) {};
-
-		Result(bool res) : exp(nullptr), success(res) {
-			// Only for failure case.
-			assert(!res);
-		}
-		
-		std::shared_ptr<Expression> exp = nullptr;
-		bool success = false;
-	};*/
 
 	Result statement();
 	Result declaration();
@@ -69,7 +57,7 @@ private:
 
 
 	std::vector<Token> _tokens;
-	std::shared_ptr<Node> _tree;
+	Expression::Ptr _tree;
 	std::string _failedMessage;
 	long _position;
 	long _tokenCount;
