@@ -45,6 +45,8 @@ struct Value {
 		STRING
 	};
 
+	Value() : type(STRING), str("empty"){}
+
 	Value(bool val) : type(BOOL), b(val){}
 
 	Value(long long val) : type(INTEGER), i(val){}

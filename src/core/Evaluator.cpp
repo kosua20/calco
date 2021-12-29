@@ -64,7 +64,7 @@ Value ExpLogger::process(const FunctionCall& exp)  {
 	return exp.name + "( " + args + " )";
 }
 
-#define EXIT(exp, msg) _context.registerError(nullptr, msg); return Value("fail");
+#define EXIT(exp, msg) _context.registerError(nullptr, msg); Log::Error() << msg << std::endl; return {};
 
 ExpEval::ExpEval(Evaluator& context) : _context(context){}
 
@@ -80,7 +80,7 @@ bool unaryBool(Operator op, bool v, bool& status){
 			break;
 	}
 	status = false;
-	return v;
+	return {};
 }
 
 long long unaryInt(Operator op, long long v, bool& status){
@@ -96,7 +96,7 @@ long long unaryInt(Operator op, long long v, bool& status){
 			break;
 	}
 	status = false;
-	return v;
+	return {};
 }
 
 double unaryFloat(Operator op, double v, bool& status){
@@ -110,7 +110,7 @@ double unaryFloat(Operator op, double v, bool& status){
 			break;
 	}
 	status = false;
-	return v;
+	return {};
 }
 
 glm::vec4 unaryVec(Operator op, const glm::vec4& v, bool& status){
@@ -124,7 +124,7 @@ glm::vec4 unaryVec(Operator op, const glm::vec4& v, bool& status){
 			break;
 	}
 	status = false;
-	return v;
+	return {};
 }
 
 glm::mat4 unaryMat(Operator op, const glm::mat4& v, bool& status){
@@ -138,7 +138,7 @@ glm::mat4 unaryMat(Operator op, const glm::mat4& v, bool& status){
 			break;
 	}
 	status = false;
-	return v;
+	return {};
 }
 
 Value ExpEval::process(const Unary& exp)  {
@@ -186,7 +186,7 @@ Value binaryBool(Operator op, bool a, bool b, bool& status){
 			break;
 	}
 	status = false;
-	return Value("fail");
+	return {};
 }
 
 Value binaryInt(Operator op, long long a, long long b, bool& status){
@@ -230,7 +230,7 @@ Value binaryInt(Operator op, long long a, long long b, bool& status){
 			break;
 	}
 	status = false;
-	return Value("fail");
+	return {};
 }
 
 Value binaryFloat(Operator op, double a, double b, bool& status){
@@ -264,7 +264,7 @@ Value binaryFloat(Operator op, double a, double b, bool& status){
 			break;
 	}
 	status = false;
-	return Value("fail");
+	return {};
 }
 
 Value binaryVec(Operator op, const glm::vec4& a, const glm::vec4& b, bool& status){
@@ -298,7 +298,7 @@ Value binaryVec(Operator op, const glm::vec4& a, const glm::vec4& b, bool& statu
 			break;
 	}
 	status = false;
-	return Value("false");
+	return {};
 }
 
 Value binaryMat(Operator op, const glm::mat4& a, const glm::mat4& b, bool& status){
@@ -320,7 +320,7 @@ Value binaryMat(Operator op, const glm::mat4& a, const glm::mat4& b, bool& statu
 			break;
 	}
 	status = false;
-	return Value("false");
+	return {};
 }
 
 Value ExpEval::process(const Binary& exp)  {
@@ -329,7 +329,6 @@ Value ExpEval::process(const Binary& exp)  {
 
 	// Target type
 	const Value::Type finalType = std::max(left.type, right.type);
-	assert(finalType < Value::Type::STRING);
 
 	bool res0, res1;
 	const Value leftConv = left.convert(finalType, res0);
@@ -369,11 +368,17 @@ Value ExpEval::process(const Binary& exp)  {
 }
 
 Value ExpEval::process(const Ternary& exp) {
-	Value cond = exp.condition->evaluate(*this);
-	if(cond.type != Value::BOOL){
-		EXIT(exp, "Condition is not boolean.");
+	const Value cond = exp.condition->evaluate(*this);
+
+	// Cast to bool.
+	bool success = true;
+	const Value condBool = cond.convert(Value::BOOL, success);
+	if(!success){
+		EXIT(exp, "Condition could not be converted to a boolean.");
 	}
-	if(cond.b){
+
+	// Partial evaluation.
+	if(condBool.b){
 		return exp.pass->evaluate(*this);
 	}
 	return exp.fail->evaluate(*this);
@@ -416,7 +421,7 @@ Value ExpEval::process(const Member& exp) {
 		default:
 			break;
 	}
-	EXIT(exp, "Item has no member.");
+	EXIT(exp, "Item has no member " + exp.member + ".");
 }
 
 Value ExpEval::process(const Literal& exp) {
@@ -424,18 +429,33 @@ Value ExpEval::process(const Literal& exp) {
 }
 
 Value ExpEval::process(const Variable& exp) {
-	// TODO: fetch from context.
-	return Value("unknown");
+	// If we have local variables (function arguments), they have priority.
+	if(!_localVariables.empty()){
+		const Variables& currentScope = _localVariables.top();
+		if(currentScope.hasVar(exp.name)){
+			return currentScope.getVar(exp.name);
+		}
+	}
+
+	// Else check variables declared in the global context.
+	const Variables& globalScope = _context.globalVariables();
+	if(globalScope.hasVar(exp.name)){
+		return globalScope.getVar(exp.name);
+	}
+	// Else undeclared variable.
+	EXIT(&exp, "Variable " + exp.name + " doesn't exist.");
 }
 
 Value ExpEval::process(const VariableDef& exp) {
+	(void)exp;
 	assert(false);
-	return Value("unknown");
+	return {};
 }
 
 Value ExpEval::process(const FunctionDef& exp)  {
+	(void)exp;
 	assert(false);
-	return Value("unknown");
+	return {};
 }
 
 Value ExpEval::process(const FunctionCall& exp)  {
@@ -445,8 +465,8 @@ Value ExpEval::process(const FunctionCall& exp)  {
 		args.push_back(arg->evaluate(*this));
 	}
 
+	// TODO: check global functions
 	// Temporary hack for basic constructors.
-
 	bool succ;
 	if(exp.name == "vec4"){
 		const size_t argCount = args.size();
@@ -475,7 +495,7 @@ Value ExpEval::process(const FunctionCall& exp)  {
 				return glm::vec4(args[0].f, args[1].f, args[2].f, args[3].f);
 			}
 		}
-		return Value("fail");
+		return {};
 	}
 	if(exp.name == "mat4"){
 		const size_t argCount = args.size();
@@ -516,13 +536,18 @@ Value ExpEval::process(const FunctionCall& exp)  {
 				return res;
 			}
 		}
-		return Value("fail");
+		return {};
 	}
-	// TODO: check global functions
 	// TODO: check local functions
-	// TODO: evaluate all arguments
+	// if(localFunction){
+	// register each arg as a local variable
+	// in a new _localVariables
+	// Then evaluate the function
+	// then pop localVariables
+	// and return the result
+
 	// TODO: populate local variable context with arguments
-	return Value("unknown");
+	return {};
 }
 
 

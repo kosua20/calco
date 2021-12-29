@@ -48,17 +48,31 @@ bool Calculator::evaluate(const std::string& input, std::string& output){
 		return false;
 	}
 	// Three possible cases:
-	// * general expression to evaluate: evaluate value based on context and log
 	// * variable definition: evaluate value based on context and store (value+name) in context
 	// * function definition: replace existing variables by their value, then store (tree+name+args names) in context
+	// * general expression to evaluate: evaluate value based on context and log the result
 
-	// Evaluate the AST
-	Evaluator evaluator(parser.tree());
-	//std::string log = evaluator.log();
-	const Value res = evaluator.eval();
-	bool suc;
-	const Value resStr = res.convert(Value::STRING, suc);
-	output = "= " + resStr.str;
+
+	// Variable definition
+	if(auto varDef = std::dynamic_pointer_cast<VariableDef>(parser.tree())){
+		Evaluator evaluator(varDef->expr, globals);
+		const Value res = evaluator.eval();
+		globals.setVar(varDef->name, res);
+		bool suc;
+		const Value resStr = res.convert(Value::STRING, suc);
+		output = varDef->name + " = " + resStr.str;
+	} else if(auto funDef = std::dynamic_pointer_cast<FunctionDef>(parser.tree())){
+		// Unicize names of arguments to avoid collisions later on.
+		// Insert current values of all global variables
+		output = funDef->name + " defined";
+	} else {
+		Evaluator evaluator(parser.tree(), globals);
+		const Value res = evaluator.eval();
+		bool suc;
+		const Value resStr = res.convert(Value::STRING, suc);
+		output = "= " + resStr.str;
+
+	}
 
 	return true;
 }

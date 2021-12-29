@@ -105,6 +105,7 @@ Value Value::convert(const Type& target, bool& success) const {
 			break;
 	}
 	success = false;
+	return Value();
 }
 
 Value Unary::evaluate(TreeVisitor& visitor)  {
