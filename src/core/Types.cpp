@@ -28,6 +28,14 @@ Value Variable::evaluate(TreeVisitor& visitor)  {
 	return visitor.process(*this);
 }
 
+Value VariableDef::evaluate(TreeVisitor& visitor) {
+	return visitor.process(*this);
+}
+
+Value FunctionDef::evaluate(TreeVisitor& visitor) {
+	return visitor.process(*this);
+}
+
 Value FunctionCall::evaluate(TreeVisitor& visitor) {
 	return visitor.process(*this);
 }

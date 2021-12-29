@@ -19,6 +19,22 @@ inline std::string OperatorString(Operator op){
 	return opStrs[uint(op)];
 }
 
+
+struct Status {
+
+	std::string message;
+	long location = -1;
+	bool success = true;
+
+	explicit Status(bool _success = true) : success(_success) {};
+
+	Status(long _location, const std::string& _message) : message(_message), location(_location), success(false) {};
+
+	operator bool() const {
+		return success;
+	}
+};
+
 struct Value {
 
 	double scalar;
@@ -38,6 +54,8 @@ class Ternary;
 class Member;
 class Literal;
 class Variable;
+class VariableDef;
+class FunctionDef;
 class FunctionCall;
 
 class TreeVisitor {
@@ -49,6 +67,8 @@ public:
 	virtual Value process(const Member& exp) = 0;
 	virtual Value process(const Literal& exp) = 0;
 	virtual Value process(const Variable& exp) = 0;
+	virtual Value process(const VariableDef& exp) = 0;
+	virtual Value process(const FunctionDef& exp) = 0;
 	virtual Value process(const FunctionCall& exp) = 0;
 };
 
@@ -136,14 +156,38 @@ public:
 	const std::string name;
 };
 
-class FunctionCall final : public Expression {
+class VariableDef final : public Expression {
 public:
 
-	FunctionCall(const std::string& _name, const std::vector<Expression::Ptr>& _members) : name(_name), members(_members) {}
+	VariableDef(const std::string& _name, const Expression::Ptr& _expr) : name(_name), expr(_expr) {}
 
 	Value evaluate(TreeVisitor& visitor) override;
 
 	const std::string name;
-	const std::vector<Expression::Ptr> members;
+	const Expression::Ptr expr;
+};
+
+class FunctionDef final : public Expression {
+public:
+
+	FunctionDef(const std::string& _name, const std::vector<std::shared_ptr<Variable>>& _args, const Expression::Ptr& _expr) : name(_name), args(_args), expr(_expr) {}
+
+	Value evaluate(TreeVisitor& visitor) override;
+
+	const std::string name;
+	const std::vector<std::shared_ptr<Variable>> args;
+	const Expression::Ptr expr;
+
+};
+
+class FunctionCall final : public Expression {
+public:
+
+	FunctionCall(const std::string& _name, const std::vector<Expression::Ptr>& _args) : name(_name), args(_args) {}
+
+	Value evaluate(TreeVisitor& visitor) override;
+
+	const std::string name;
+	const std::vector<Expression::Ptr> args;
 
 };

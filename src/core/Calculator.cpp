@@ -4,49 +4,47 @@
 #include "core/Evaluator.hpp"
 #include "core/system/TextUtilities.hpp"
 
+std::string generateErrorLocationMessage(const std::string& input, int start, int end){
+	const std::string errorPointerPadding = (start != 0) ? std::string(start, ' ') : "";
+	const std::string errorPointer = std::string(end - start + 1, '^');
 
+	std::string errorMessage = "around position " + std::to_string(start);
+	errorMessage.append("\n\t");
+	errorMessage.append(input);
+	errorMessage.append("\n\t");
+	errorMessage.append(errorPointerPadding + errorPointer);
+	return errorMessage;
+}
 
 bool Calculator::evaluate(const std::string& input, std::string& output){
 	const std::string& cleanInput = TextUtilities::trim(input, "\t\r\n ");
 	// Scanning
 	Scanner scanner(cleanInput);
-	const int scanResult = scanner.scan();
-	if(scanResult != Scanner::NO_ERROR){
-		const std::string errorPointerPadding = scanResult != 0 ? std::string(scanResult, ' ') : "";
-		std::string errorMessage = "Parsing error around position " + std::to_string(scanResult);
-		errorMessage.append("\n\t");
-		errorMessage.append(cleanInput);
-		errorMessage.append("\n\t");
-		errorMessage.append(errorPointerPadding + "^");
-		output = errorMessage;
+	const Status scanResult = scanner.scan();
+	if(!scanResult){
+		// Point to the problematic character.
+		const long characterPos = scanResult.location;
+		const std::string errorMsg = generateErrorLocationMessage(cleanInput, characterPos, characterPos);
+		output = "Parsing: " + scanResult.message + " " + errorMsg;
 		return false;
 	}
 	// Build the AST
 	Parser parser(scanner.tokens());
-	const int parseResult = parser.parse();
-	if(parseResult != Parser::NO_ERROR){
-		long tokenStart = 0;
-		long tokenLength = 0;
-		if(parseResult < int(scanner.tokens().size())){
-			const Token& errorToken = scanner.tokens()[parseResult];
-			tokenLength = errorToken.dbgEndPos - errorToken.dbgStartPos + 1;
-			tokenStart = errorToken.dbgStartPos;
+	const Status parseResult = parser.parse();
+	
+	if(!parseResult){
+		output = "Compilation: " + parseResult.message + " ";
+		if(parseResult.location < int(scanner.tokens().size())){
+			const Token& errorToken = scanner.tokens()[parseResult.location];
+			const std::string errorMsg = generateErrorLocationMessage(cleanInput, errorToken.dbgStartPos, errorToken.dbgEndPos);
+			output.append(errorMsg);
+
 		} else {
 			// Handle end-of-line errors.
-			const Token& errorToken = scanner.tokens().back();
-			tokenLength = 1;
-			tokenStart = errorToken.dbgEndPos+1;
+			const Token& lastToken = scanner.tokens().back();
+			const std::string errorMsg = generateErrorLocationMessage(cleanInput, lastToken.dbgEndPos, lastToken.dbgEndPos);
+			output.append(errorMsg);
 		}
-
-		const std::string errorPointerPadding = (tokenStart != 0) ? std::string(tokenStart, ' ') : "";
-		const std::string errorPointer = std::string(tokenLength, '^');
-
-		std::string errorMessage = "Compilation error around position " + std::to_string(tokenStart);
-		errorMessage.append("\n\t");
-		errorMessage.append(cleanInput);
-		errorMessage.append("\n\t");
-		errorMessage.append(errorPointerPadding + errorPointer);
-		output = errorMessage;
 		return false;
 	}
 	
@@ -55,20 +53,7 @@ bool Calculator::evaluate(const std::string& input, std::string& output){
 	std::string log = evaluator.log();
 	output = log;
 
-	// Debug token log.
-	/*std::string log;
-	for(const Token& tok : scanner.tokens()){
-		if(tok.type == Token::Type::Float){
-			log += " " + std::to_string(tok.fVal) + "f";
-		} else if(tok.type == Token::Type::Integer){
-			log += " " + std::to_string(tok.iVal) + "i";
-		} else if(tok.type == Token::Type::Operator){
-			log += " " + OperatorString(tok.opVal);
-		} else if(tok.type == Token::Type::Identifier){
-			log += " " + tok.sVal;
-		}
-	}
-	output = "= " + log;*/
+	
 
 	return true;
 }

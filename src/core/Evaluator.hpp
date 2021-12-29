@@ -11,6 +11,8 @@ public:
 	Value process(const Member& exp) override;
 	Value process(const Literal& exp) override;
 	Value process(const Variable& exp) override;
+	Value process(const VariableDef& exp) override;
+	Value process(const FunctionDef& exp) override;
 	Value process(const FunctionCall& exp) override;
 };
 

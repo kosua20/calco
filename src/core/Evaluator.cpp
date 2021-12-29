@@ -37,19 +37,36 @@ Value TreeLogger::process(const Variable& exp) {
 	return exp.name;
 }
 
+Value TreeLogger::process(const VariableDef& exp) {
+	return exp.name + " = " + exp.expr->evaluate(*this).str;
+}
+
+Value TreeLogger::process(const FunctionDef& exp)  {
+	std::string args;
+	const size_t argCount = exp.args.size();
+	for(size_t aid = 0; aid < argCount; ++aid){
+		const auto& arg = exp.args[aid];
+		args += (aid != 0 ? "," : "") + arg->name;
+	}
+	return exp.name + "( " + args + " ) = " + exp.expr->evaluate(*this).str;
+}
+
 Value TreeLogger::process(const FunctionCall& exp)  {
 	std::string args;
-	const size_t argCount = exp.members.size();
+	const size_t argCount = exp.args.size();
 	for(size_t aid = 0; aid < argCount; ++aid){
-		const auto& arg = exp.members[aid];
+		const auto& arg = exp.args[aid];
 		const std::string str = arg->evaluate(*this).str;
-		args += str + ", ";
+		args += (aid != 0 ? "," : "") + str;
 	}
 	return exp.name + "( " + args + " )";
 }
 
 std::string Evaluator::log(){
-
+	if(_tree == nullptr){
+		return "Empty tree";
+	}
+	
 	TreeLogger logger;
 	Value finalStr = _tree->evaluate(logger);
 	return finalStr.str;

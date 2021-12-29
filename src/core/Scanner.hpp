@@ -28,13 +28,11 @@ public:
 
 	Scanner(const std::string& input);
 
-	int scan();
+	Status scan();
 
 	const std::vector<Token>& tokens() const {
 		return _tokens;
 	}
-
-	static const int NO_ERROR;
 
 private:
 

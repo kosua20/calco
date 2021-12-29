@@ -1,8 +1,6 @@
 #include "core/Scanner.hpp"
 #include "core/system/TextUtilities.hpp"
 
-const int Scanner::NO_ERROR = -1;
-
 Scanner::Scanner(const std::string& input) {
 	_input = input;
 	_inputSize = long(_input.size());
@@ -56,13 +54,13 @@ bool Scanner::isIdentifierCharAt(long pos) const {
 	return (a >= 'a' && a <= 'z') || (a >= 'A' && a <= 'Z') || (a == '_');
 }
 
-int Scanner::scan(){
+Status Scanner::scan(){
 	_tokens.clear();
 	long position = 0;
-	int firstErrorPosition = NO_ERROR;
+	long firstErrorPosition = -1;
 
 	if(_input.empty()){
-		return true;
+		return Status(true);
 	}
 
 	while(valid(position)){
@@ -343,5 +341,9 @@ int Scanner::scan(){
 		++position;
 	}
 
-	return firstErrorPosition;
+	if(firstErrorPosition >= 0){
+		return Status(firstErrorPosition, "Syntax");
+	}
+
+	return Status(true);
 }
