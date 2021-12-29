@@ -54,10 +54,11 @@ bool Calculator::evaluate(const std::string& input, std::string& output){
 
 	// Evaluate the AST
 	Evaluator evaluator(parser.tree());
-	std::string log = evaluator.log();
-	output = log;
-
-
+	//std::string log = evaluator.log();
+	const Value res = evaluator.eval();
+	bool suc;
+	const Value resStr = res.convert(Value::STRING, suc);
+	output = "= " + resStr.str;
 
 	return true;
 }
