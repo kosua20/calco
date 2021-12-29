@@ -63,4 +63,5 @@ private:
 	long _tokenCount;
 	long _failedToken = -1;
 	bool _failed = false;
+	bool _parsingFunctionDeclaration = false;
 };

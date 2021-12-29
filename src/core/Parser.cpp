@@ -143,6 +143,8 @@ Parser::Result Parser::statement(){
 		}
 
 		if(match(Operator::OpenParenth)){
+			_parsingFunctionDeclaration = true;
+
 			if(match(Operator::CloseParenth)){
 				// Constant function.
 				if(!match(Operator::Assign)){
@@ -155,7 +157,7 @@ Parser::Result Parser::statement(){
 			}
 
 			// Else parse arguments
-			std::vector<std::shared_ptr<Variable>> arguments;
+			std::vector<std::string> arguments;
 			do {
 				if(!valid()){
 					EXIT("Missing argument name");
@@ -165,7 +167,7 @@ Parser::Result Parser::statement(){
 					EXIT("Expected argument name");
 				}
 				advance();
-				arguments.emplace_back(new Variable(arg.sVal));
+				arguments.emplace_back(arg.sVal);
 			} while(match(Operator::Comma));
 
 			if(!match(Operator::CloseParenth)){
@@ -461,7 +463,11 @@ Parser::Result Parser::terminal(){
 			return Expression::Ptr(new FunctionCall(current.sVal, arguments));
 		} else {
 			// Simple variable.
-			return Expression::Ptr(new Variable(current.sVal));
+			if(_parsingFunctionDeclaration){
+				return Expression::Ptr(new FunctionVar(current.sVal));
+			} else {
+				return Expression::Ptr(new Variable(current.sVal));
+			}
 		}
 	}
 	// Otherwise, the only valid operator is a left parenthesis.
@@ -480,6 +486,8 @@ Parser::Result Parser::terminal(){
 
 Status Parser::parse(){
 	_tree = nullptr;
+	_parsingFunctionDeclaration = false;
+
 	Result res = statement();
 	if(res != nullptr){
 		if( _position != _tokenCount){

@@ -8,8 +8,9 @@ public:
 
 private:
 
-	Variables globals;
+	Scope _globals;
 
+	unsigned long _funcCounter = 0;
 	// User defined functions...
 	// Settings
 };

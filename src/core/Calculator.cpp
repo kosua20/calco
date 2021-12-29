@@ -55,18 +55,34 @@ bool Calculator::evaluate(const std::string& input, std::string& output){
 
 	// Variable definition
 	if(auto varDef = std::dynamic_pointer_cast<VariableDef>(parser.tree())){
-		Evaluator evaluator(varDef->expr, globals);
+
+		Evaluator evaluator(varDef->expr, _globals);
 		const Value res = evaluator.eval();
-		globals.setVar(varDef->name, res);
+		_globals.setVar(varDef->name, res);
 		bool suc;
 		const Value resStr = res.convert(Value::STRING, suc);
 		output = varDef->name + " = " + resStr.str;
+
 	} else if(auto funDef = std::dynamic_pointer_cast<FunctionDef>(parser.tree())){
 		// Unicize names of arguments to avoid collisions later on.
 		// Insert current values of all global variables
-		output = funDef->name + " defined";
+		Evaluator evaluator(funDef->expr, _globals);
+		// Build unique name for all arguments.
+		const std::string suffix = "_" + funDef->name + "_" + std::to_string(_funcCounter);
+
+		const Status res = evaluator.substitute(funDef->args, suffix);
+		if(res.success){
+			_globals.setFunc(funDef->name, funDef);
+			output = funDef->name + " defined";
+			++_funcCounter;
+		} else {
+			output = "Validation error " + res.message;
+			return false;
+		}
+
 	} else {
-		Evaluator evaluator(parser.tree(), globals);
+
+		Evaluator evaluator(parser.tree(), _globals);
 		const Value res = evaluator.eval();
 		bool suc;
 		const Value resStr = res.convert(Value::STRING, suc);

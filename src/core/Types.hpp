@@ -79,6 +79,7 @@ class Literal;
 class Variable;
 class VariableDef;
 class FunctionDef;
+class FunctionVar;
 class FunctionCall;
 
 class TreeVisitor {
@@ -91,6 +92,7 @@ public:
 	virtual Value process(const Variable& exp) = 0;
 	virtual Value process(const VariableDef& exp) = 0;
 	virtual Value process(const FunctionDef& exp) = 0;
+	virtual Value process(		FunctionVar& exp) = 0; // This is intentional, only used when flattening function definitions.
 	virtual Value process(const FunctionCall& exp) = 0;
 };
 
@@ -168,6 +170,7 @@ public:
 	Value evaluate(TreeVisitor& visitor) override;
 
 	const std::string name;
+
 };
 
 class VariableDef final : public Expression {
@@ -184,14 +187,43 @@ public:
 class FunctionDef final : public Expression {
 public:
 
-	FunctionDef(const std::string& _name, const std::vector<std::shared_ptr<Variable>>& _args, const Expression::Ptr& _expr) : name(_name), args(_args), expr(_expr) {}
+	FunctionDef(const std::string& _name, const std::vector<std::string>& _args, const Expression::Ptr& _expr) : name(_name), args(_args), expr(_expr) {}
 
 	Value evaluate(TreeVisitor& visitor) override;
 
 	const std::string name;
-	const std::vector<std::shared_ptr<Variable>> args;
+	std::vector<std::string> args;
 	const Expression::Ptr expr;
 
+};
+
+class FunctionVar final : public Expression {
+public:
+
+	FunctionVar(const std::string& _name) : name(_name){}
+
+	Value evaluate(TreeVisitor& visitor) override;
+
+	void setValue(const Value& value){
+		_hasValue = true;
+		_value = value;
+	}
+
+	bool hasValue() const {
+		return _hasValue;
+	}
+
+	const Value& value() const {
+		assert(hasValue());
+		return _value;
+	}
+
+	std::string name;
+
+private:
+
+	Value _value;
+	bool _hasValue;
 };
 
 class FunctionCall final : public Expression {

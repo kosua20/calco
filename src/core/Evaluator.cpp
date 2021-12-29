@@ -48,9 +48,13 @@ Value ExpLogger::process(const FunctionDef& exp)  {
 	const size_t argCount = exp.args.size();
 	for(size_t aid = 0; aid < argCount; ++aid){
 		const auto& arg = exp.args[aid];
-		args += (aid != 0 ? "," : "") + arg->name;
+		args += (aid != 0 ? "," : "") + arg;
 	}
 	return exp.name + "( " + args + " ) = " + exp.expr->evaluate(*this).str;
+}
+
+Value ExpLogger::process(FunctionVar& exp) {
+	return exp.name;
 }
 
 Value ExpLogger::process(const FunctionCall& exp)  {
@@ -387,7 +391,7 @@ Value ExpEval::process(const Ternary& exp) {
 
 Value ExpEval::process(const Member& exp) {
 	Value par = exp.parent->evaluate(*this);
-
+	// TODO: more complex getters
 	switch (par.type) {
 		case Value::MAT4:
 			if(exp.member == "x"){
@@ -430,19 +434,39 @@ Value ExpEval::process(const Literal& exp) {
 
 Value ExpEval::process(const Variable& exp) {
 	// If we have local variables (function arguments), they have priority.
-	if(!_localVariables.empty()){
-		const Variables& currentScope = _localVariables.top();
+	if(!_localScopes.empty()){
+		// This should not happen in practice.
+		// All variables in function expressions are FunctionVar.
+		assert(false);
+		const Scope& currentScope = _localScopes.top();
 		if(currentScope.hasVar(exp.name)){
 			return currentScope.getVar(exp.name);
 		}
 	}
 
 	// Else check variables declared in the global context.
-	const Variables& globalScope = _context.globalVariables();
+	const Scope& globalScope = _context.globalScope();
 	if(globalScope.hasVar(exp.name)){
 		return globalScope.getVar(exp.name);
 	}
 	// Else undeclared variable.
+	EXIT(&exp, "Variable " + exp.name + " doesn't exist.");
+}
+
+Value ExpEval::process(FunctionVar& exp) {
+	if(exp.hasValue()){
+		return exp.value();
+	}
+
+	// Else, this is an argument, check in the current local scope if it exists.
+	if(!_localScopes.empty()){
+		const Scope& currentScope = _localScopes.top();
+		if(currentScope.hasVar(exp.name)){
+			return currentScope.getVar(exp.name);
+		}
+	}
+
+	// Can't be in the global context.
 	EXIT(&exp, "Variable " + exp.name + " doesn't exist.");
 }
 
@@ -459,26 +483,45 @@ Value ExpEval::process(const FunctionDef& exp)  {
 }
 
 Value ExpEval::process(const FunctionCall& exp)  {
-	std::vector<Value> args;
-	args.reserve(exp.args.size());
+	const size_t argCount = exp.args.size();
+
+	// Evaluate all arguments.
+	std::vector<Value> argValues;
+	argValues.reserve(argCount);
 	for(const auto& arg : exp.args){
-		args.push_back(arg->evaluate(*this));
+		argValues.push_back(arg->evaluate(*this));
+	}
+
+	// Check local functions
+	if(_context.globalScope().hasFunc(exp.name)){
+		// Populate local variable context with arguments
+		const auto& funcDef = _context.globalScope().getFunc(exp.name);
+		if(funcDef->args.size() != argCount){
+			EXIT(exp, "Incorrect number of arguments for function " + exp.name);
+		}
+
+		Scope& currentScope = _localScopes.emplace();
+		for(size_t aid = 0; aid < argCount; ++aid){
+			currentScope.setVar(funcDef->args[aid], argValues[aid]);
+		}
+		const Value res = funcDef->expr->evaluate(*this);
+		_localScopes.pop();
+		return res;
 	}
 
 	// TODO: check global functions
 	// Temporary hack for basic constructors.
 	bool succ;
 	if(exp.name == "vec4"){
-		const size_t argCount = args.size();
 		if(argCount == 1){
-			switch (args[0].type) {
+			switch (argValues[0].type) {
 				case Value::VEC4:
-					return args[0].vec;
+					return argValues[0].vec;
 
 				case Value::FLOAT:
 				case Value::INTEGER:
 				{
-					const Value conv = args[0].convert(Value::FLOAT, succ);
+					const Value conv = argValues[0].convert(Value::FLOAT, succ);
 					if(succ){
 						return glm::vec4(conv.f);
 					}
@@ -489,24 +532,23 @@ Value ExpEval::process(const FunctionCall& exp)  {
 			}
 		} else if(argCount == 4){
 			for(int i = 0; i < 4; ++i){
-				args[i] = args[i].convert(Value::FLOAT, succ);
+				argValues[i] = argValues[i].convert(Value::FLOAT, succ);
 			}
 			if(succ){
-				return glm::vec4(args[0].f, args[1].f, args[2].f, args[3].f);
+				return glm::vec4(argValues[0].f, argValues[1].f, argValues[2].f, argValues[3].f);
 			}
 		}
 		return {};
 	}
 	if(exp.name == "mat4"){
-		const size_t argCount = args.size();
 		if(argCount == 1){
-			switch (args[0].type) {
+			switch (argValues[0].type) {
 				case Value::MAT4:
-					return args[0].mat;
+					return argValues[0].mat;
 				case Value::FLOAT:
 				case Value::INTEGER:
 				{
-					const Value conv = args[0].convert(Value::FLOAT, succ);
+					const Value conv = argValues[0].convert(Value::FLOAT, succ);
 					if(succ){
 						return glm::mat4(conv.f);
 					}
@@ -517,20 +559,20 @@ Value ExpEval::process(const FunctionCall& exp)  {
 			}
 		} else if(argCount == 4){
 			for(int i = 0; i < 4; ++i){
-				args[i] = args[i].convert(Value::VEC4, succ);
+				argValues[i] = argValues[i].convert(Value::VEC4, succ);
 			}
 			if(succ){
-				return glm::mat4(args[0].vec, args[1].vec, args[2].vec, args[3].vec);
+				return glm::mat4(argValues[0].vec, argValues[1].vec, argValues[2].vec, argValues[3].vec);
 			}
 		} else if(argCount == 16){
 			for(int i = 0; i < 16; ++i){
-				args[i] = args[i].convert(Value::FLOAT, succ);
+				argValues[i] = argValues[i].convert(Value::FLOAT, succ);
 			}
 			if(succ){
 				glm::mat4 res;
 				for(int i = 0; i < 4; ++i){
 					for(int j = 0; j < 4; ++j){
-						res[i][j] = args[4*i+j].f;
+						res[i][j] = argValues[4*i+j].f;
 					}
 				}
 				return res;
@@ -538,16 +580,84 @@ Value ExpEval::process(const FunctionCall& exp)  {
 		}
 		return {};
 	}
-	// TODO: check local functions
-	// if(localFunction){
-	// register each arg as a local variable
-	// in a new _localVariables
-	// Then evaluate the function
-	// then pop localVariables
-	// and return the result
-
-	// TODO: populate local variable context with arguments
 	return {};
+}
+
+FuncSubstitution::FuncSubstitution(Evaluator& context, const std::vector<std::string>& argNames, const std::string& id)
+	: _context(context), _names(argNames), _id(id) {
+
+}
+
+Value FuncSubstitution::process(const Unary& exp)  {
+	const Value res = exp.exp->evaluate(*this);
+	return res;
+}
+
+Value FuncSubstitution::process(const Binary& exp)  {
+	const Value l = exp.left->evaluate(*this);
+	const Value r = exp.right->evaluate(*this);
+	return l.b && r.b;
+}
+
+Value FuncSubstitution::process(const Ternary& exp) {
+	const Value c = exp.condition->evaluate(*this);
+	const Value p = exp.pass->evaluate(*this);
+	const Value f = exp.fail->evaluate(*this);
+	return c.b && p.b && f.b;
+}
+
+Value FuncSubstitution::process(const Member& exp) {
+	const Value r = exp.parent->evaluate(*this);
+	return r.b;
+}
+
+Value FuncSubstitution::process(const Literal& exp) {
+	(void)exp;
+	return true;
+}
+
+Value FuncSubstitution::process(const Variable& exp) {
+	(void)exp;
+	// This should not happen in a function declaration.
+	assert(false);
+	return false;
+}
+
+Value FuncSubstitution::process(const VariableDef& exp) {
+	(void)exp;
+	assert(false);
+	return false;
+}
+
+Value FuncSubstitution::process(const FunctionDef& exp) {
+	(void)exp;
+	assert(false);
+	return false;
+}
+
+Value FuncSubstitution::process(FunctionVar& exp) {
+	// If variable in argument list, update its name.
+	if(std::find(_names.begin(), _names.end(), exp.name) != _names.end()){
+		exp.name.append(_id);
+		return true;
+	}
+	// Else fetch its value from the global variables to bake it.
+	const Scope& globalScope = _context.globalScope();
+	if(globalScope.hasVar(exp.name)){
+		exp.setValue(globalScope.getVar(exp.name));
+		return true;
+	}
+	EXIT(nullptr, "Undefined variable " + exp.name);
+	return false;
+}
+
+Value FuncSubstitution::process(const FunctionCall& exp)  {
+	bool res = true;
+	for(auto& arg : exp.args){
+		const Value r = arg->evaluate(*this);
+		res = r.b && res;
+	}
+	return res;
 }
 
 
@@ -575,4 +685,19 @@ Value Evaluator::eval(){
 	}
 	ExpEval evaluator(*this);
 	return _tree->evaluate(evaluator);
+}
+
+Status Evaluator::substitute(std::vector<std::string>& argNames, const std::string& id){
+	if(_tree == nullptr){
+		return Status(0, "Empty expression");
+	}
+	
+	FuncSubstitution substitutor(*this, argNames, id);
+	const Value res = _tree->evaluate(substitutor);
+
+	// Update names after all substitutions and funcVariable modifications.
+	for(std::string& argName : argNames){
+		argName.append(id);
+	}
+	return res.b ? Status() : Status(0, _failedMessage);
 }

@@ -140,6 +140,10 @@ Value FunctionDef::evaluate(TreeVisitor& visitor) {
 	return visitor.process(*this);
 }
 
+Value FunctionVar::evaluate(TreeVisitor& visitor) {
+	return visitor.process(*this);
+}
+
 Value FunctionCall::evaluate(TreeVisitor& visitor) {
 	return visitor.process(*this);
 }
