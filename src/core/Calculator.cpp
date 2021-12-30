@@ -23,7 +23,7 @@ std::string logTree(const Expression::Ptr& exp ){
 }
 
 bool Calculator::evaluate(const std::string& input, std::string& output){
-	const std::string& cleanInput = TextUtilities::trim(input, "\t\r\n ");
+	const std::string& cleanInput = input;
 	// Scanning
 	Scanner scanner(cleanInput);
 	const Status scanResult = scanner.scan();
@@ -62,44 +62,60 @@ bool Calculator::evaluate(const std::string& input, std::string& output){
 	// Variable definition
 	if(auto varDef = std::dynamic_pointer_cast<VariableDef>(parser.tree())){
 
-		//Evaluator evaluator(varDef->expr, _globals, _stdlib);
 		ExpEval evaluator(_globals, _stdlib);
-		const Value res = varDef->expr->evaluate(evaluator);
-		_globals.setVar(varDef->name, res);
-		bool suc;
-		const Value resStr = res.convert(Value::STRING, suc);
-		output = varDef->name + " = " + resStr.str;
+		Value outValue;
+		const Status evalResult = varDef->expr->evaluate(evaluator, outValue);
+
+		if(evalResult.success){
+			// Store result in global scope.
+			_globals.setVar(varDef->name, outValue);
+			output = varDef->name + " = " + outValue.toString();
+			return true;
+		} else {
+			const Expression* failExp = evaluator.getErrorExpression();
+			output = "Evaluation error: " + evalResult.message;
+			return false;
+		}
 
 	} else if(auto funDef = std::dynamic_pointer_cast<FunctionDef>(parser.tree())){
-		// Unicize names of arguments to avoid collisions later on.
-		// Insert current values of all global variables
-		
+
 		// Build unique name for all arguments.
 		const std::string suffix = "_" + funDef->name + "_" + std::to_string(_funcCounter);
 
-		FuncSubstitution substitutor(_globals, funDef->args, suffix);
-		const Value res = funDef->expr->evaluate(substitutor);
-		// Update names after all substitutions and funcVariable modifications.
+		// Insert current values of all global variables and unicize arguments names.
+		FuncSubstitution flattener(_globals, _stdlib, funDef->args, suffix);
+		Value unused;
+		const Status evalResult = funDef->expr->evaluate(flattener, unused);
+
+		// Update names list after all substitutions and funcVariable modifications.
 		for(std::string& argName : funDef->args){
 			argName.append(suffix);
 		}
-		// TODO: proper error handlng
-		if(res.b){
+
+		if(evalResult.success){
+			// Store flattened function in global scope.
 			_globals.setFunc(funDef->name, funDef);
 			output = funDef->name + " defined";
 			++_funcCounter;
 		} else {
-			output = "Validation error ";// + stat.message;
+			const Expression* failExp = flattener.getErrorExpression();
+			output = "Evaluation error: " + evalResult.message;
 			return false;
 		}
 
 	} else {
 		ExpEval evaluator(_globals, _stdlib);
-		const Value res = parser.tree()->evaluate(evaluator);
+		Value outValue;
+		const Status evalResult = parser.tree()->evaluate(evaluator, outValue);
 
-		bool suc;
-		const Value resStr = res.convert(Value::STRING, suc);
-		output = "= " + resStr.str;
+		if(evalResult.success){
+			output = "= " + outValue.toString();
+			return true;
+		} else {
+			const Expression* failExp = evaluator.getErrorExpression();
+			output = "Evaluation error: " + evalResult.message;
+			return false;
+		}
 
 	}
 

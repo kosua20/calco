@@ -38,14 +38,11 @@ private:
 
 	std::stack<Scope> _localScopes;
 
-	std::string _failedMessage;
-	Expression::Ptr _failedExpression = nullptr;
-	bool _failed = false;
 };
 
 class FuncSubstitution final : public TreeVisitor {
 public:
-	FuncSubstitution(const Scope& _scope, const std::vector<std::string>& argNames, const std::string& id);
+	FuncSubstitution(const Scope& _scope, const FunctionsLibrary& stdlib, const std::vector<std::string>& argNames, const std::string& id);
 
 	Value process(const Unary& exp) override;
 	Value process(const Binary& exp) override;
@@ -60,11 +57,9 @@ public:
 
 private:
 	const Scope& _globalScope;
+	const FunctionsLibrary& _stdlib;
 
 	const std::vector<std::string>& _names;
 	const std::string _id;
 
-	std::string _failedMessage;
-	Expression::Ptr _failedExpression = nullptr;
-	bool _failed = false;
 };

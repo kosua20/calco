@@ -61,6 +61,8 @@ struct Value {
 
 	Value convert(const Type& target, bool& success) const;
 
+	std::string toString() const;
+	
 	Type type;
 	glm::mat4 mat;
 	glm::vec4 vec;
@@ -81,6 +83,7 @@ class VariableDef;
 class FunctionDef;
 class FunctionVar;
 class FunctionCall;
+class Expression;
 
 class TreeVisitor {
 public:
@@ -94,6 +97,18 @@ public:
 	virtual Value process(const FunctionDef& exp) = 0;
 	virtual Value process(		FunctionVar& exp) = 0; // This is intentional, only used when flattening function definitions.
 	virtual Value process(const FunctionCall& exp) = 0;
+
+	Status getStatus() const;
+
+	Expression const * getErrorExpression() const {
+		return _failedExpression;
+	}
+
+protected:
+
+	std::string _failedMessage;
+	Expression const * _failedExpression = nullptr;
+	bool _failed = false;
 };
 
 class Expression {
@@ -102,8 +117,11 @@ public:
 
 	virtual Value evaluate(TreeVisitor& visitor) = 0;
 
+	Status evaluate(TreeVisitor& visitor, Value& outValue);
+
 	using Ptr = std::shared_ptr<Expression>;
 
+	
 };
 
 class Unary final : public Expression {

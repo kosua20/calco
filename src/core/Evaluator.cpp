@@ -68,7 +68,7 @@ Value ExpLogger::process(const FunctionCall& exp)  {
 	return exp.name + "( " + args + " )";
 }
 
-#define EXIT(exp, msg) if(true){ if(!_failed){ _failedMessage = msg;  }; _failed = true; Log::Error() << msg << std::endl; return {}; }
+#define EXIT(exp, msg) if(true){ if(!_failed){ _failedMessage = msg; _failedExpression = exp; }; _failed = true; return {}; }
 
 ExpEval::ExpEval(const Scope& scope, const FunctionsLibrary& stdlib) : _globalScope(scope), _stdlib(stdlib) {}
 
@@ -496,7 +496,7 @@ Value ExpEval::process(const FunctionCall& exp)  {
 		// Populate local variable context with arguments
 		const auto& funcDef = _globalScope.getFunc(exp.name);
 		if(funcDef->args.size() != argCount){
-			EXIT(exp, "Incorrect number of arguments for function " + exp.name);
+			EXIT(&exp, "Incorrect number of arguments for function " + exp.name);
 		}
 
 		Scope& currentScope = _localScopes.emplace();
@@ -516,8 +516,8 @@ Value ExpEval::process(const FunctionCall& exp)  {
 	return {};
 }
 
-FuncSubstitution::FuncSubstitution(const Scope& scope, const std::vector<std::string>& argNames, const std::string& id)
-	: _globalScope(scope), _names(argNames), _id(id) {
+FuncSubstitution::FuncSubstitution(const Scope& scope, const FunctionsLibrary& stdlib, const std::vector<std::string>& argNames, const std::string& id)
+	: _globalScope(scope), _stdlib(stdlib), _names(argNames), _id(id) {
 
 }
 
@@ -550,21 +550,21 @@ Value FuncSubstitution::process(const Literal& exp) {
 }
 
 Value FuncSubstitution::process(const Variable& exp) {
-	(void)exp;
 	// This should not happen in a function declaration.
 	assert(false);
+	EXIT(&exp, "Unexpected variable " + exp.name + " in function declaration.");
 	return false;
 }
 
 Value FuncSubstitution::process(const VariableDef& exp) {
-	(void)exp;
 	assert(false);
+	EXIT(&exp, "Unexpected variable definition in function declaration.");
 	return false;
 }
 
 Value FuncSubstitution::process(const FunctionDef& exp) {
-	(void)exp;
 	assert(false);
+	EXIT(&exp, "Unexpected nested function declaration.");
 	return false;
 }
 
@@ -579,15 +579,35 @@ Value FuncSubstitution::process(FunctionVar& exp) {
 		exp.setValue(_globalScope.getVar(exp.name));
 		return true;
 	}
-	EXIT(nullptr, "Undefined variable " + exp.name);
+	EXIT(&exp, "Undefined variable " + exp.name);
 	return false;
 }
 
 Value FuncSubstitution::process(const FunctionCall& exp)  {
+	// Always evaluate arguments first.
 	bool res = true;
 	for(auto& arg : exp.args){
 		const Value r = arg->evaluate(*this);
 		res = r.b && res;
 	}
-	return res;
+
+	if(!res){
+		return res;
+	}
+
+	// Then check existence.
+	if(_globalScope.hasFunc(exp.name)){
+		const size_t expectedCount = _globalScope.getFunc(exp.name)->args.size();
+		if(expectedCount != exp.args.size()){
+			EXIT(&exp, "Incorrect number of arguments for function " + exp.name);
+		}
+		return true;
+	}
+
+	if(_stdlib.hasFunc(exp.name)){
+		// TODO: check arg count
+		return true;
+	}
+	EXIT(&exp, "Undefined function " + exp.name);
+	return false;
 }
