@@ -9,6 +9,7 @@ public:
 private:
 
 	Scope _globals;
+	FunctionsLibrary _stdlib;
 
 	unsigned long _funcCounter = 0;
 	// User defined functions...

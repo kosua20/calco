@@ -16,6 +16,12 @@ std::string generateErrorLocationMessage(const std::string& input, int start, in
 	return errorMessage;
 }
 
+std::string logTree(const Expression::Ptr& exp ){
+	ExpLogger logger;
+	Value finalStr = exp->evaluate(logger);
+	return finalStr.str;
+}
+
 bool Calculator::evaluate(const std::string& input, std::string& output){
 	const std::string& cleanInput = TextUtilities::trim(input, "\t\r\n ");
 	// Scanning
@@ -56,8 +62,9 @@ bool Calculator::evaluate(const std::string& input, std::string& output){
 	// Variable definition
 	if(auto varDef = std::dynamic_pointer_cast<VariableDef>(parser.tree())){
 
-		Evaluator evaluator(varDef->expr, _globals);
-		const Value res = evaluator.eval();
+		//Evaluator evaluator(varDef->expr, _globals, _stdlib);
+		ExpEval evaluator(_globals, _stdlib);
+		const Value res = varDef->expr->evaluate(evaluator);
 		_globals.setVar(varDef->name, res);
 		bool suc;
 		const Value resStr = res.convert(Value::STRING, suc);
@@ -66,24 +73,30 @@ bool Calculator::evaluate(const std::string& input, std::string& output){
 	} else if(auto funDef = std::dynamic_pointer_cast<FunctionDef>(parser.tree())){
 		// Unicize names of arguments to avoid collisions later on.
 		// Insert current values of all global variables
-		Evaluator evaluator(funDef->expr, _globals);
+		
 		// Build unique name for all arguments.
 		const std::string suffix = "_" + funDef->name + "_" + std::to_string(_funcCounter);
 
-		const Status res = evaluator.substitute(funDef->args, suffix);
-		if(res.success){
+		FuncSubstitution substitutor(_globals, funDef->args, suffix);
+		const Value res = funDef->expr->evaluate(substitutor);
+		// Update names after all substitutions and funcVariable modifications.
+		for(std::string& argName : funDef->args){
+			argName.append(suffix);
+		}
+		// TODO: proper error handlng
+		if(res.b){
 			_globals.setFunc(funDef->name, funDef);
 			output = funDef->name + " defined";
 			++_funcCounter;
 		} else {
-			output = "Validation error " + res.message;
+			output = "Validation error ";// + stat.message;
 			return false;
 		}
 
 	} else {
+		ExpEval evaluator(_globals, _stdlib);
+		const Value res = parser.tree()->evaluate(evaluator);
 
-		Evaluator evaluator(parser.tree(), _globals);
-		const Value res = evaluator.eval();
 		bool suc;
 		const Value resStr = res.convert(Value::STRING, suc);
 		output = "= " + resStr.str;

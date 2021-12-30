@@ -3,30 +3,6 @@
 #include "core/Types.hpp"
 #include "core/Functions.hpp"
 
-class Evaluator {
-public:
-	Evaluator(const Expression::Ptr& tree, Scope& scope) : _tree(tree), _globalScope(scope) {}
-
-	std::string log();
-
-	Value eval();
-
-	Status substitute(std::vector<std::string>& argNames, const std::string& id);
-
-	void registerError(const Expression::Ptr& exp, const std::string& msg);
-
-	Scope& globalScope() { return _globalScope; }
-	
-private:
-	Expression::Ptr _tree;
-	Scope& _globalScope;
-
-	std::string _failedMessage;
-	Expression::Ptr _failedExpression = nullptr;
-	bool _failed = false;
-};
-
-
 class ExpLogger final : public TreeVisitor {
 public:
 	Value process(const Unary& exp) override;
@@ -43,7 +19,7 @@ public:
 
 class ExpEval final : public TreeVisitor {
 public:
-	ExpEval(Evaluator& context);
+	ExpEval(const Scope& scope, const FunctionsLibrary& stdlib);
 
 	Value process(const Unary& exp) override;
 	Value process(const Binary& exp) override;
@@ -57,13 +33,19 @@ public:
 	Value process(const FunctionCall& exp) override;
 
 private:
-	Evaluator& _context;
+	const Scope& _globalScope;
+	const FunctionsLibrary& _stdlib;
+
 	std::stack<Scope> _localScopes;
+
+	std::string _failedMessage;
+	Expression::Ptr _failedExpression = nullptr;
+	bool _failed = false;
 };
 
 class FuncSubstitution final : public TreeVisitor {
 public:
-	FuncSubstitution(Evaluator& context, const std::vector<std::string>& argNames, const std::string& id);
+	FuncSubstitution(const Scope& _scope, const std::vector<std::string>& argNames, const std::string& id);
 
 	Value process(const Unary& exp) override;
 	Value process(const Binary& exp) override;
@@ -77,7 +59,12 @@ public:
 	Value process(const FunctionCall& exp) override;
 
 private:
-	Evaluator& _context;
+	const Scope& _globalScope;
+
 	const std::vector<std::string>& _names;
 	const std::string _id;
+
+	std::string _failedMessage;
+	Expression::Ptr _failedExpression = nullptr;
+	bool _failed = false;
 };
