@@ -18,7 +18,6 @@ inline std::string OperatorString(Operator op){
 	return opStrs[uint(op)];
 }
 
-
 struct Status {
 
 	std::string message;
@@ -59,7 +58,7 @@ struct Value {
 	
 	Value(const glm::vec4& val) : type(VEC4), vec(val){}
 
-	Value convert(const Type& target, bool& success) const;
+	bool convert(const Type& target, Value& outVal) const;
 
 	std::string toString() const;
 	
@@ -72,6 +71,12 @@ struct Value {
 	std::string str;
 };
 
+inline std::string TypeString(Value::Type type){
+	static const std::vector<std::string> typeStrs = {
+		"boolean", "integer", "float", "vec4", "mat4", "string"
+	};
+	return typeStrs[type];
+}
 
 class Unary;
 class Binary;

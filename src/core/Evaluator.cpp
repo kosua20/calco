@@ -68,316 +68,431 @@ Value ExpLogger::process(const FunctionCall& exp)  {
 	return exp.name + "( " + args + " )";
 }
 
-#define EXIT(exp, msg) if(true){ if(!_failed){ _failedMessage = msg; _failedExpression = exp; }; _failed = true; return {}; }
+#define EXIT(exp, msg) if(true){ if(!_failed){ _failedMessage = msg; _failedExpression = exp; }; _failed = true; return false; }
 
 ExpEval::ExpEval(const Scope& scope, const FunctionsLibrary& stdlib) : _globalScope(scope), _stdlib(stdlib) {}
 
-
-bool unaryBool(Operator op, bool v, bool& status){
-	status = true;
-	switch(op){
-		case Operator::BitNot:
-			return !v;
-		case Operator::BoolNot:
-			return !v;
+Value ExpEval::uOpIdentity(const Value& v){
+	switch(v.type){
+		case Value::INTEGER:
+			return v.i;
+		case Value::FLOAT:
+			return v.f;
+		case Value::VEC4:
+			return v.vec;
+		case Value::MAT4:
+			return v.mat;
 		default:
 			break;
 	}
-	status = false;
-	return {};
+	EXIT(nullptr, "Unsupported type " + TypeString(v.type) + " for unary + sign.");
 }
 
-long long unaryInt(Operator op, long long v, bool& status){
-	status = true;
-	switch(op){
-		case Operator::Plus:
-			return v;
-		case Operator::Minus:
-			return -v;
-		case Operator::BitNot:
-			return ~v;
+Value ExpEval::uOpNegate(const Value& v){
+	switch(v.type){
+		case Value::INTEGER:
+			return -v.i;
+		case Value::FLOAT:
+			return -v.f;
+		case Value::VEC4:
+			return -v.vec;
+		case Value::MAT4:
+			return -v.mat;
 		default:
 			break;
 	}
-	status = false;
-	return {};
+	EXIT(nullptr, "Unsupported type " + TypeString(v.type) + " for unary - sign.");
 }
 
-double unaryFloat(Operator op, double v, bool& status){
-	status = true;
-	switch(op){
-		case Operator::Plus:
-			return v;
-		case Operator::Minus:
-			return -v;
-		default:
-			break;
+Value ExpEval::uOpBitNot(const Value& v){
+	Value vc;
+	if(v.convert(Value::INTEGER, vc)){
+		return ~v.i;
 	}
-	status = false;
-	return {};
+	EXIT(nullptr, "Unsupported type " + TypeString(v.type) + " for bitwise negation.");
 }
 
-glm::vec4 unaryVec(Operator op, const glm::vec4& v, bool& status){
-	status = true;
-	switch(op){
-		case Operator::Plus:
-			return v;
-		case Operator::Minus:
-			return -v;
-		default:
-			break;
+Value ExpEval::uOpBoolNot(const Value& v){
+	Value vc;
+	if(v.convert(Value::BOOL, vc)){
+		return !v.b;
 	}
-	status = false;
-	return {};
-}
-
-glm::mat4 unaryMat(Operator op, const glm::mat4& v, bool& status){
-	status = true;
-	switch(op){
-		case Operator::Plus:
-			return v;
-		case Operator::Minus:
-			return -v;
-		default:
-			break;
-	}
-	status = false;
-	return {};
+	EXIT(nullptr, "Unsupported type " + TypeString(v.type) + " for boolean negation.");
 }
 
 Value ExpEval::process(const Unary& exp)  {
-	Value val = exp.exp->evaluate(*this);
-	bool status = false;
-	switch(val.type){
-		case Value::BOOL:
-			val.b = unaryBool(exp.op, val.b, status);
+	Value v = exp.exp->evaluate(*this);
+	// Early exit.
+	if(_failed){
+		return false;
+	}
+
+	static const std::unordered_map<Operator, Value (ExpEval::*)(const Value& v)> unaryOps = {
+		{ Operator::Plus, &ExpEval::uOpIdentity }, { Operator::Minus, &ExpEval::uOpNegate },
+		{ Operator::BitNot, &ExpEval::uOpBitNot }, { Operator::BoolNot, &ExpEval::uOpBoolNot }
+	};
+	auto uOp = unaryOps.find(exp.op);
+	if(uOp != unaryOps.end()){
+		return (this->*(uOp->second))(v);
+	}
+	EXIT(&exp, "Unknown unary operator: " + OperatorString(exp.op));
+}
+
+bool ExpEval::convertValues(const Value& l, const Value& r, Value::Type type, Value& outl, Value& outr){
+	if(!l.convert(type, outl)){
+		EXIT(nullptr, "Unable to convert left member to " + TypeString(type) + ".");
+	}
+	if(!r.convert(type, outr)){
+		EXIT(nullptr, "Unable to convert right member to " + TypeString(type)  + ".");
+	}
+	return true;
+}
+
+bool ExpEval::alignValues(const Value& l, const Value& r, Value& outl, Value& outr, Value::Type minType){
+	const Value::Type maxType = std::max(minType, std::max(l.type, r.type));
+	return convertValues(l, r, maxType, outl, outr);
+}
+
+Value ExpEval::bOpAddition(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!alignValues(l, r, outl, outr, Value::INTEGER)){
+		return false;
+	}
+	switch(outl.type){
 		case Value::INTEGER:
-			val.i = unaryInt(exp.op, val.i, status);
-			break;
+			return outl.i + outr.i;
 		case Value::FLOAT:
-			val.f = unaryFloat(exp.op, val.f, status);
-			break;
+			return outl.f + outr.f;
 		case Value::VEC4:
-			val.vec = unaryVec(exp.op, val.vec, status);
-			break;
+			return outl.vec + outr.vec;
 		case Value::MAT4:
-			val.mat = unaryMat(exp.op, val.mat, status);
-			break;
+			return outl.mat + outr.mat;
 		default:
 			break;
 	}
-
-	if(!status){
-		EXIT(&exp, "Unsupported unary operator");
-	}
-	return val;
+	EXIT(nullptr, "Unsupported type " + TypeString(outl.type) + " for addition.");
+	return false;
 }
 
-Value binaryBool(Operator op, bool a, bool b, bool& status){
-	status = true;
-	switch(op){
-		case Operator::Equal:
-			return a == b;
-		case Operator::Different:
-			return a != b;
-		case Operator::BoolOr:
-			return a || b;
-		case Operator::BoolAnd:
-			return a && b;
-		case Operator::BoolXor:
-			return (!a && b) || (a && !b);
+Value ExpEval::bOpSubstraction(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!alignValues(l, r, outl, outr, Value::INTEGER)){
+		return false;
+	}
+	switch(outl.type){
+		case Value::INTEGER:
+			return outl.i - outr.i;
+		case Value::FLOAT:
+			return outl.f - outr.f;
+		case Value::VEC4:
+			return outl.vec - outr.vec;
+		case Value::MAT4:
+			return outl.mat - outr.mat;
 		default:
 			break;
 	}
-	status = false;
-	return {};
+	EXIT(nullptr, "Unsupported type " + TypeString(outl.type) + " for substraction.");
+	return false;
 }
 
-Value binaryInt(Operator op, long long a, long long b, bool& status){
-	status = true;
-	switch(op){
-		case Operator::Plus:
-			return a+b;
-		case Operator::Minus:
-			return a-b;
-		case Operator::Product:
-			return a*b;
-		case Operator::Divide:
-			return double(a)/double(b);
-		case Operator::Power:
-			return (long long)(pow(a, b));
-		case Operator::Modulo:
-			return a % b;
-		case Operator::ShiftLeft:
-			return a << b;
-		case Operator::ShiftRight:
-			return a >> b;
-		case Operator::LessThan:
-			return a < b;
-		case Operator::GreaterThan:
-			return a > b;
-		case Operator::LessThanEqual:
-			return a <= b;
-		case Operator::GreaterThanEqual:
-			return a >= b;
-		case Operator::Equal:
-			return a == b;
-		case Operator::Different:
-			return a != b;
-		case Operator::BitOr:
-			return a | b;
-		case Operator::BitAnd:
-			return a & b;
-		case Operator::BitXor:
-			return a ^ b;
+Value ExpEval::bOpProduct(const Value& l, const Value& r){
+	// Special case: matrix * vec or vec * matrix.
+	if(l.type == Value::MAT4 && r.type == Value::VEC4){
+		return l.mat * r.vec;
+	}
+	if(l.type == Value::VEC4 && r.type == Value::MAT4){
+		return l.vec * r.mat;
+	}
+
+	// All other cases are covered via type promotion.
+	Value outl, outr;
+	if(!alignValues(l, r, outl, outr, Value::INTEGER)){
+		return false;
+	}
+	switch(outl.type){
+		case Value::INTEGER:
+			return outl.i * outr.i;
+		case Value::FLOAT:
+			return outl.f * outr.f;
+		case Value::VEC4:
+			return outl.vec * outr.vec;
+		case Value::MAT4:
+			return outl.mat * outr.mat;
 		default:
 			break;
 	}
-	status = false;
-	return {};
+	EXIT(nullptr, "Unsupported type " + TypeString(outl.type) + " for product.");
+	return false;
 }
 
-Value binaryFloat(Operator op, double a, double b, bool& status){
-	status = true;
-	switch(op){
-		case Operator::Plus:
-			return a+b;
-		case Operator::Minus:
-			return a-b;
-		case Operator::Product:
-			return a*b;
-		case Operator::Divide:
-			return a/b;
-		case Operator::Power:
-			return glm::pow(a, b);
-		case Operator::Modulo:
-			return glm::mod(a, b);
-		case Operator::LessThan:
-			return a < b;
-		case Operator::GreaterThan:
-			return a > b;
-		case Operator::LessThanEqual:
-			return a <= b;
-		case Operator::GreaterThanEqual:
-			return a >= b;
-		case Operator::Equal:
-			return a == b;
-		case Operator::Different:
-			return a != b;
+Value ExpEval::bOpDivide(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!alignValues(l, r, outl, outr, Value::FLOAT)){
+		return false;
+	}
+	switch(outl.type){
+		case Value::FLOAT:
+			return outl.f / outr.f;
+		case Value::VEC4:
+			return outl.vec / outr.vec;
+		case Value::MAT4:
+			return outl.mat / outr.mat;
 		default:
 			break;
 	}
-	status = false;
-	return {};
+	EXIT(nullptr, "Unsupported type " + TypeString(outl.type) + " for division.");
 }
 
-Value binaryVec(Operator op, const glm::vec4& a, const glm::vec4& b, bool& status){
-	status = true;
-	switch(op){
-		case Operator::Plus:
-			return a+b;
-		case Operator::Minus:
-			return a-b;
-		case Operator::Product:
-			return a*b;
-		case Operator::Divide:
-			return a/b;
-		case Operator::Power:
-			return glm::pow(a, b);
-		case Operator::Modulo:
-			return glm::mod(a, b);
-		case Operator::LessThan:
-			return glm::all(glm::lessThan(a, b));
-		case Operator::GreaterThan:
-			return glm::all(glm::greaterThan(a, b));
-		case Operator::LessThanEqual:
-			return glm::all(glm::lessThanEqual(a, b));
-		case Operator::GreaterThanEqual:
-			return glm::all(glm::greaterThanEqual(a, b));
-		case Operator::Equal:
-			return glm::all(glm::equal(a, b));
-		case Operator::Different:
-			return glm::any(glm::notEqual(a, b));
+Value ExpEval::bOpPower(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!alignValues(l, r, outl, outr, Value::FLOAT)){
+		return false;
+	}
+	switch(outl.type){
+		case Value::FLOAT:
+			return glm::pow(outl.f, outr.f);
+		case Value::VEC4:
+			return glm::pow(outl.vec, outr.vec);
 		default:
 			break;
 	}
-	status = false;
-	return {};
+	EXIT(nullptr, "Unsupported type " + TypeString(outl.type) + " for exponentiation.");
 }
 
-Value binaryMat(Operator op, const glm::mat4& a, const glm::mat4& b, bool& status){
-	status = true;
-	switch(op){
-		case Operator::Plus:
-			return a+b;
-		case Operator::Minus:
-			return a-b;
-		case Operator::Product:
-			return a*b;
-		case Operator::Divide:
-			return a/b;
-		case Operator::Equal:
-			return a == b;
-		case Operator::Different:
-			return a != b;
+Value ExpEval::bOpModulo(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!alignValues(l, r, outl, outr, Value::INTEGER)){
+		return false;
+	}
+	switch(outl.type){
+		case Value::INTEGER:
+			return outl.i % outr.i;
+		case Value::FLOAT:
+			return glm::mod(outl.f, outr.f);
+		case Value::VEC4:
+			return glm::mod(outl.vec, outr.vec);
 		default:
 			break;
 	}
-	status = false;
-	return {};
+	EXIT(nullptr, "Unsupported type " + TypeString(outl.type) + " for modulo.");
 }
+
+Value ExpEval::bOpShiftLeft(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!convertValues(l, r, Value::INTEGER, outl, outr)){
+		return false;
+	}
+	return outl.i << outr.i;
+}
+
+Value ExpEval::bOpShiftRight(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!convertValues(l, r, Value::INTEGER, outl, outr)){
+		return false;
+	}
+	return outl.i >> outr.i;
+}
+
+Value ExpEval::bOpLessThan(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!alignValues(l, r, outl, outr, Value::INTEGER)){
+		return false;
+	}
+	switch(outl.type){
+		case Value::INTEGER:
+			return outl.i < outr.i;
+		case Value::FLOAT:
+			return outl.f < outr.f;
+		case Value::VEC4:
+			return glm::all(glm::lessThan(outl.vec, outr.vec));
+		default:
+			break;
+	}
+	EXIT(nullptr, "Unsupported type " + TypeString(outl.type) + " for comparison.");
+}
+
+Value ExpEval::bOpGreaterThan(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!alignValues(l, r, outl, outr, Value::INTEGER)){
+		return false;
+	}
+	switch(outl.type){
+		case Value::INTEGER:
+			return outl.i > outr.i;
+		case Value::FLOAT:
+			return outl.f > outr.f;
+		case Value::VEC4:
+			return glm::all(glm::greaterThan(outl.vec, outr.vec));
+		default:
+			break;
+	}
+	EXIT(nullptr, "Unsupported type " + TypeString(outl.type) + " for comparison.");
+}
+
+Value ExpEval::bOpLessThanEqual(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!alignValues(l, r, outl, outr, Value::INTEGER)){
+		return false;
+	}
+	switch(outl.type){
+		case Value::INTEGER:
+			return outl.i <= outr.i;
+		case Value::FLOAT:
+			return outl.f <= outr.f;
+		case Value::VEC4:
+			return glm::all(glm::lessThanEqual(outl.vec, outr.vec));
+		default:
+			break;
+	}
+	EXIT(nullptr, "Unsupported type " + TypeString(outl.type) + " for comparison.");
+}
+
+Value ExpEval::bOpGreaterThanEqual(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!alignValues(l, r, outl, outr, Value::INTEGER)){
+		return false;
+	}
+	switch(outl.type){
+		case Value::INTEGER:
+			return outl.i >= outr.i;
+		case Value::FLOAT:
+			return outl.f >= outr.f;
+		case Value::VEC4:
+			return glm::all(glm::greaterThanEqual(outl.vec, outr.vec));
+		default:
+			break;
+	}
+	EXIT(nullptr, "Unsupported type " + TypeString(outl.type) + " for comparison.");
+}
+
+Value ExpEval::bOpEqual(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!alignValues(l, r, outl, outr, Value::BOOL)){
+		return false;
+	}
+	switch(outl.type){
+		case Value::BOOL:
+			return outl.b == outr.b;
+		case Value::INTEGER:
+			return outl.i == outr.i;
+		case Value::FLOAT:
+			return outl.f == outr.f;
+		case Value::VEC4:
+			return outl.vec == outr.vec;
+		case Value::MAT4:
+			return outl.mat == outr.mat;
+		default:
+			break;
+	}
+	EXIT(nullptr, "Unsupported type " + TypeString(outl.type) + " for comparison.");
+}
+
+Value ExpEval::bOpNotEqual(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!alignValues(l, r, outl, outr, Value::BOOL)){
+		return false;
+	}
+	switch(outl.type){
+		case Value::BOOL:
+			return outl.b != outr.b;
+		case Value::INTEGER:
+			return outl.i != outr.i;
+		case Value::FLOAT:
+			return outl.f != outr.f;
+		case Value::VEC4:
+			return outl.vec != outr.vec;
+		case Value::MAT4:
+			return outl.mat != outr.mat;
+		default:
+			break;
+	}
+	EXIT(nullptr, "Unsupported type " + TypeString(outl.type) + " for comparison.");
+}
+
+Value ExpEval::bOpBitOr(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!convertValues(l, r, Value::INTEGER, outl, outr)){
+		return false;
+	}
+	return outl.i | outr.i;
+}
+
+Value ExpEval::bOpBitAnd(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!convertValues(l, r, Value::INTEGER, outl, outr)){
+		return false;
+	}
+	return outl.i & outr.i;
+}
+
+Value ExpEval::bOpBitXor(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!convertValues(l, r, Value::INTEGER, outl, outr)){
+		return false;
+	}
+	return outl.i ^ outr.i;
+}
+
+Value ExpEval::bOpBoolOr(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!convertValues(l, r, Value::BOOL, outl, outr)){
+		return false;
+	}
+	return outl.b || outr.b;
+}
+
+Value ExpEval::bOpBoolAnd(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!convertValues(l, r, Value::BOOL, outl, outr)){
+		return false;
+	}
+	return outl.b || outr.b;
+}
+
+Value ExpEval::bOpBoolXor(const Value& l, const Value& r){
+	Value outl, outr;
+	if(!convertValues(l, r, Value::BOOL, outl, outr)){
+		return false;
+	}
+	return (!outl.b && outr.b) || (outl.b && !outr.b);
+}
+
 
 Value ExpEval::process(const Binary& exp)  {
-	const Value left = exp.left->evaluate(*this);
-	const Value right = exp.right->evaluate(*this);
 
-	// Target type
-	const Value::Type finalType = std::max(left.type, right.type);
-
-	bool res0, res1;
-	const Value leftConv = left.convert(finalType, res0);
-	const Value rightConv = right.convert(finalType, res1);
-	// TODO: special case for mat*vec
-	if(!res0 || !res1){
-		EXIT(&exp, "Can't convert");
+	// No notion of partial evaluation.
+	const Value l = exp.left->evaluate(*this);
+	const Value r = exp.right->evaluate(*this);
+	// Early exit.
+	if(_failed){
+		return false;
 	}
 
-	bool status = false;
-	const Operator op = exp.op;
-	Value result(0ll);
-	switch (finalType) {
-		case Value::BOOL:
-			result = binaryBool(op, leftConv.b, rightConv.b, status);
-			break;
-		case Value::INTEGER:
-			result = binaryInt(op, leftConv.i, rightConv.i, status);
-			break;
-		case Value::FLOAT:
-			result = binaryFloat(op, leftConv.f, rightConv.f, status);
-			break;
-		case Value::VEC4:
-			result = binaryVec(op, leftConv.vec, rightConv.vec, status);
-			break;
-		case Value::MAT4:
-			result = binaryMat(op, leftConv.mat, rightConv.mat, status);
-			break;
+	static const std::unordered_map<Operator, Value (ExpEval::*)(const Value& l, const Value& r)> binaryOps = {
+		{ Operator::Plus, &ExpEval::bOpAddition }, { Operator::Minus, &ExpEval::bOpSubstraction },
+		{ Operator::Product, &ExpEval::bOpProduct }, { Operator::Divide, &ExpEval::bOpDivide },
+		{ Operator::Power, &ExpEval::bOpPower }, { Operator::Modulo, &ExpEval::bOpModulo },
+		{ Operator::ShiftLeft, &ExpEval::bOpShiftLeft }, { Operator::ShiftRight, &ExpEval::bOpShiftRight },
+		{ Operator::LessThan, &ExpEval::bOpLessThan }, { Operator::GreaterThan, &ExpEval::bOpGreaterThan },
+		{ Operator::LessThanEqual, &ExpEval::bOpLessThanEqual },{ Operator::GreaterThanEqual, &ExpEval::bOpGreaterThanEqual },
+		{ Operator::Equal, &ExpEval::bOpEqual }, { Operator::Different, &ExpEval::bOpNotEqual },
+		{ Operator::BitOr, &ExpEval::bOpBitOr }, { Operator::BitAnd, &ExpEval::bOpBitAnd }, { Operator::BitXor, &ExpEval::bOpBitXor },
+		{ Operator::BoolOr, &ExpEval::bOpBoolOr }, { Operator::BoolAnd, &ExpEval::bOpBoolAnd }, { Operator::BoolXor, &ExpEval::bOpBoolXor },
+	};
+	auto bOp = binaryOps.find(exp.op);
+	if(bOp != binaryOps.end()){
+		return (this->*(bOp->second))(l, r);
+	}
 
-		default:
-			break;
-	}
-	if(!status){
-		EXIT(&exp, "Unsupported unary operator");
-	}
-	return result;
+	EXIT(&exp, "Unknown binary operator: " + OperatorString(exp.op));
 }
 
 Value ExpEval::process(const Ternary& exp) {
 	const Value cond = exp.condition->evaluate(*this);
 
 	// Cast to bool.
-	bool success = true;
-	const Value condBool = cond.convert(Value::BOOL, success);
-	if(!success){
+	Value condBool;
+	if(!cond.convert(Value::BOOL, condBool)){
 		EXIT(&exp, "Condition could not be converted to a boolean.");
 	}
 
@@ -386,7 +501,6 @@ Value ExpEval::process(const Ternary& exp) {
 		return exp.pass->evaluate(*this);
 	}
 	return exp.fail->evaluate(*this);
-
 }
 
 Value ExpEval::process(const Member& exp) {
@@ -425,7 +539,7 @@ Value ExpEval::process(const Member& exp) {
 		default:
 			break;
 	}
-	EXIT(&exp, "Item has no member " + exp.member + ".");
+	EXIT(&exp, "Item has no member named " + exp.member + ".");
 }
 
 Value ExpEval::process(const Literal& exp) {
@@ -449,7 +563,7 @@ Value ExpEval::process(const Variable& exp) {
 		return _globalScope.getVar(exp.name);
 	}
 	// Else undeclared variable.
-	EXIT(&exp, "Variable " + exp.name + " doesn't exist.");
+	EXIT(&exp, "Undefined variable " + exp.name + ".");
 }
 
 Value ExpEval::process(FunctionVar& exp) {
@@ -466,19 +580,19 @@ Value ExpEval::process(FunctionVar& exp) {
 	}
 
 	// Can't be in the global context.
-	EXIT(&exp, "Variable " + exp.name + " doesn't exist.");
+	EXIT(&exp, "Undefined variable " + exp.name + ".");
 }
 
 Value ExpEval::process(const VariableDef& exp) {
 	(void)exp;
 	assert(false);
-	return {};
+	EXIT(&exp, "Unexpected variable declaration (" + exp.name + " ).");
 }
 
 Value ExpEval::process(const FunctionDef& exp)  {
 	(void)exp;
 	assert(false);
-	return {};
+	EXIT(&exp, "Unexpected function declaration (" + exp.name + " ).");
 }
 
 Value ExpEval::process(const FunctionCall& exp)  {
@@ -495,8 +609,9 @@ Value ExpEval::process(const FunctionCall& exp)  {
 	if(_globalScope.hasFunc(exp.name)){
 		// Populate local variable context with arguments
 		const auto& funcDef = _globalScope.getFunc(exp.name);
-		if(funcDef->args.size() != argCount){
-			EXIT(&exp, "Incorrect number of arguments for function " + exp.name);
+		const size_t expectedCount = funcDef->args.size();
+		if(expectedCount != argCount){
+			EXIT(&exp, "Incorrect number of arguments for function " + exp.name + ", expected " + std::to_string(expectedCount) + ".");
 		}
 
 		Scope& currentScope = _localScopes.emplace();
@@ -512,8 +627,8 @@ Value ExpEval::process(const FunctionCall& exp)  {
 		// TODO: arg check.
 		return _stdlib.eval(exp, argValues);
 	}
-	
-	return {};
+
+	EXIT(&exp, "Undefined function " + exp.name + ".");
 }
 
 FuncSubstitution::FuncSubstitution(const Scope& scope, const FunctionsLibrary& stdlib, const std::vector<std::string>& argNames, const std::string& id)
@@ -553,19 +668,16 @@ Value FuncSubstitution::process(const Variable& exp) {
 	// This should not happen in a function declaration.
 	assert(false);
 	EXIT(&exp, "Unexpected variable " + exp.name + " in function declaration.");
-	return false;
 }
 
 Value FuncSubstitution::process(const VariableDef& exp) {
 	assert(false);
-	EXIT(&exp, "Unexpected variable definition in function declaration.");
-	return false;
+	EXIT(&exp, "Unexpected variable definition (" + exp.name + ") in function declaration.");
 }
 
 Value FuncSubstitution::process(const FunctionDef& exp) {
 	assert(false);
-	EXIT(&exp, "Unexpected nested function declaration.");
-	return false;
+	EXIT(&exp, "Unexpected nested function declaration (" + exp.name + ").");
 }
 
 Value FuncSubstitution::process(FunctionVar& exp) {
@@ -579,8 +691,7 @@ Value FuncSubstitution::process(FunctionVar& exp) {
 		exp.setValue(_globalScope.getVar(exp.name));
 		return true;
 	}
-	EXIT(&exp, "Undefined variable " + exp.name);
-	return false;
+	EXIT(&exp, "Undefined variable " + exp.name + ".");
 }
 
 Value FuncSubstitution::process(const FunctionCall& exp)  {
@@ -599,7 +710,7 @@ Value FuncSubstitution::process(const FunctionCall& exp)  {
 	if(_globalScope.hasFunc(exp.name)){
 		const size_t expectedCount = _globalScope.getFunc(exp.name)->args.size();
 		if(expectedCount != exp.args.size()){
-			EXIT(&exp, "Incorrect number of arguments for function " + exp.name);
+			EXIT(&exp, "Incorrect number of arguments for function " + exp.name + " (expected " + std::to_string(expectedCount) + ").");
 		}
 		return true;
 	}
@@ -608,6 +719,5 @@ Value FuncSubstitution::process(const FunctionCall& exp)  {
 		// TODO: check arg count
 		return true;
 	}
-	EXIT(&exp, "Undefined function " + exp.name);
-	return false;
+	EXIT(&exp, "Undefined function " + exp.name + ".");
 }

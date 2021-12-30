@@ -94,11 +94,11 @@ Value clamp(const std::vector<Value>& args){
 		return false;
 	}
 	const Value::Type finalType = std::max(std::max(Value::INTEGER, args[0].type), std::max(args[1].type, args[2].type));
-	bool success = true;
+	Value conv0, conv1, conv2;
 	// TODO: 'convert all to biggest type' helper
-	const Value conv0 = args[0].convert(finalType, success);
-	const Value conv1 = args[1].convert(finalType, success);
-	const Value conv2 = args[2].convert(finalType, success);
+	args[0].convert(finalType, conv0);
+	args[1].convert(finalType, conv1);
+	args[2].convert(finalType, conv2);
 	switch (finalType) {
 		case Value::INTEGER:
 			return glm::clamp(conv0.i, conv1.i, conv2.i);
@@ -116,7 +116,6 @@ Value clamp(const std::vector<Value>& args){
 }
 
 Value vec4Constructor(const std::vector<Value>& args){
-	bool succ = true;
 	if(args.size() == 1){
 		switch (args[0].type) {
 			case Value::VEC4:
@@ -125,8 +124,8 @@ Value vec4Constructor(const std::vector<Value>& args){
 			case Value::FLOAT:
 			case Value::INTEGER:
 			{
-				const Value conv = args[0].convert(Value::FLOAT, succ);
-				if(succ){
+				Value conv;
+				if(args[0].convert(Value::FLOAT, conv)){
 					return glm::vec4(conv.f);
 				}
 				break;
@@ -136,8 +135,9 @@ Value vec4Constructor(const std::vector<Value>& args){
 		}
 	} else if(args.size() == 4){
 		std::vector<Value> convArgs(4);
+		bool succ = true;
 		for(int i = 0; i < 4; ++i){
-			convArgs[i] = args[i].convert(Value::FLOAT, succ);
+			succ = args[i].convert(Value::FLOAT, convArgs[i]) && succ;
 		}
 		if(succ){
 			return glm::vec4(convArgs[0].f, convArgs[1].f, convArgs[2].f, convArgs[3].f);
@@ -147,7 +147,6 @@ Value vec4Constructor(const std::vector<Value>& args){
 }
 
 Value mat4Constructor(const std::vector<Value>& args){
-	bool succ = true;
 	if(args.size() == 1){
 		switch (args[0].type) {
 			case Value::MAT4:
@@ -155,8 +154,8 @@ Value mat4Constructor(const std::vector<Value>& args){
 			case Value::FLOAT:
 			case Value::INTEGER:
 			{
-				const Value conv = args[0].convert(Value::FLOAT, succ);
-				if(succ){
+				Value conv;
+				if(args[0].convert(Value::FLOAT, conv)){
 					return glm::mat4(conv.f);
 				}
 				break;
@@ -166,16 +165,18 @@ Value mat4Constructor(const std::vector<Value>& args){
 		}
 	} else if(args.size() == 4){
 		std::vector<Value> convArgs(4);
+		bool succ = true;
 		for(int i = 0; i < 4; ++i){
-			convArgs[i] = args[i].convert(Value::VEC4, succ);
+			succ = args[i].convert(Value::VEC4, convArgs[i]) && succ;
 		}
 		if(succ){
 			return glm::mat4(convArgs[0].vec, convArgs[1].vec, convArgs[2].vec, convArgs[3].vec);
 		}
 	} else if(args.size() == 16){
 		std::vector<Value> convArgs(16);
+		bool succ = true;
 		for(int i = 0; i < 16; ++i){
-			convArgs[i] = args[i].convert(Value::FLOAT, succ);
+			succ = args[i].convert(Value::FLOAT, convArgs[i]) && succ;
 		}
 		if(succ){
 			glm::mat4 res;

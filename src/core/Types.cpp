@@ -45,24 +45,41 @@ std::string Value::toString() const {
 	return "unknown";
 }
 
-Value Value::convert(const Type& target, bool& success) const {
-	success = true;
+/** Type promotions;
+ bool -> int, bool -> float, bool->vec4, bool->mat4
+ int -> bool, int -> float, int->vec4, int->mat4
+ float -> bool, float -> float, float->vec4, float->mat4
+
+ vec4 and mat4 -> no promotion
+ */
+bool Value::convert(const Type& target, Value& outVal) const {
+
 	if(target == type){
-		return *this;
+		outVal = *this;
+		return true;
 	}
 
 	// String conversion is always possible.
 	if(target == Value::STRING){
-		return toString();
+		outVal = toString();
+		return true;
 	}
 
 	switch (type) {
 		case BOOL:
 			switch (target) {
 				case INTEGER:
-					return Value((long long)(b ? 1 : 0));
+					outVal = (long long)(b ? 1 : 0);
+					return true;
 				case FLOAT:
-					return Value(b ? 1.0 : 0.0);
+					outVal = b ? 1.0 : 0.0;
+					return true;
+				case VEC4:
+					outVal = glm::vec4(double(i));
+					return true;
+				case MAT4:
+					outVal = glm::mat4(double(i));
+					return true;
 				default:
 					break;
 			}
@@ -70,13 +87,17 @@ Value Value::convert(const Type& target, bool& success) const {
 		case INTEGER:
 			switch (target) {
 				case BOOL:
-					return Value(i != 0);
+					outVal = (i != 0);
+					return true;
 				case FLOAT:
-					return Value(double(i));
+					outVal = double(i);
+					return true;
 				case VEC4:
-					return Value(glm::vec4(double(i)));
+					outVal = glm::vec4(double(i));
+					return true;
 				case MAT4:
-					return Value(glm::mat4(double(i)));
+					outVal = glm::mat4(double(i));
+					return true;
 				default:
 					break;
 			}
@@ -84,13 +105,17 @@ Value Value::convert(const Type& target, bool& success) const {
 		case FLOAT:
 			switch (target) {
 				case BOOL:
-					return Value(f != 0.0);
+					outVal = f != 0.0;
+					return true;
 				case INTEGER:
-					return Value((long long)(f));
+					outVal = (long long)(f);
+					return true;
 				case VEC4:
-					return Value(glm::vec4(f));
+					outVal = glm::vec4(f);
+					return true;
 				case MAT4:
-					return Value(glm::mat4(f));
+					outVal = glm::mat4(f);
+					return true;
 				default:
 					break;
 			}
@@ -100,8 +125,7 @@ Value Value::convert(const Type& target, bool& success) const {
 		default:
 			break;
 	}
-	success = false;
-	return Value();
+	return false;
 }
 
 Value Unary::evaluate(TreeVisitor& visitor)  {
