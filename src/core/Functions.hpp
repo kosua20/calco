@@ -25,3 +25,11 @@ private:
 	std::unordered_map<std::string, std::shared_ptr<FunctionDef>> _functions;
 
 };
+
+class FunctionsLibrary {
+public:
+	bool hasFunc(const std::string& name) const ;
+
+	Value eval(const FunctionCall& func, const std::vector<Value>& args) const;
+
+};
