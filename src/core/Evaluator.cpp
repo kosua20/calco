@@ -78,10 +78,14 @@ Value ExpEval::uOpIdentity(const Value& v){
 			return v.i;
 		case Value::FLOAT:
 			return v.f;
+		case Value::VEC3:
+			return v.v3;
+		case Value::MAT3:
+			return v.m3;
 		case Value::VEC4:
-			return v.vec;
+			return v.v4;
 		case Value::MAT4:
-			return v.mat;
+			return v.m4;
 		default:
 			break;
 	}
@@ -94,10 +98,14 @@ Value ExpEval::uOpNegate(const Value& v){
 			return -v.i;
 		case Value::FLOAT:
 			return -v.f;
+		case Value::VEC3:
+			return -v.v3;
+		case Value::MAT3:
+			return -v.m3;
 		case Value::VEC4:
-			return -v.vec;
+			return -v.v4;
 		case Value::MAT4:
-			return -v.mat;
+			return -v.m4;
 		default:
 			break;
 	}
@@ -163,10 +171,14 @@ Value ExpEval::bOpAddition(const Value& l, const Value& r){
 			return outl.i + outr.i;
 		case Value::FLOAT:
 			return outl.f + outr.f;
+		case Value::VEC3:
+			return outl.v3 + outr.v3;
+		case Value::MAT3:
+			return outl.m3 + outr.m3;
 		case Value::VEC4:
-			return outl.vec + outr.vec;
+			return outl.v4 + outr.v4;
 		case Value::MAT4:
-			return outl.mat + outr.mat;
+			return outl.m4 + outr.m4;
 		default:
 			break;
 	}
@@ -184,10 +196,14 @@ Value ExpEval::bOpSubstraction(const Value& l, const Value& r){
 			return outl.i - outr.i;
 		case Value::FLOAT:
 			return outl.f - outr.f;
+		case Value::VEC3:
+			return outl.v3 - outr.v3;
+		case Value::MAT3:
+			return outl.m3 - outr.m3;
 		case Value::VEC4:
-			return outl.vec - outr.vec;
+			return outl.v4 - outr.v4;
 		case Value::MAT4:
-			return outl.mat - outr.mat;
+			return outl.m4 - outr.m4;
 		default:
 			break;
 	}
@@ -197,11 +213,17 @@ Value ExpEval::bOpSubstraction(const Value& l, const Value& r){
 
 Value ExpEval::bOpProduct(const Value& l, const Value& r){
 	// Special case: matrix * vec or vec * matrix.
+	if(l.type == Value::MAT3 && r.type == Value::VEC3){
+		return l.m3 * r.v3;
+	}
+	if(l.type == Value::VEC3 && r.type == Value::MAT3){
+		return l.v3 * r.m3;
+	}
 	if(l.type == Value::MAT4 && r.type == Value::VEC4){
-		return l.mat * r.vec;
+		return l.m4 * r.v4;
 	}
 	if(l.type == Value::VEC4 && r.type == Value::MAT4){
-		return l.vec * r.mat;
+		return l.v4 * r.m4;
 	}
 
 	// All other cases are covered via type promotion.
@@ -214,10 +236,14 @@ Value ExpEval::bOpProduct(const Value& l, const Value& r){
 			return outl.i * outr.i;
 		case Value::FLOAT:
 			return outl.f * outr.f;
+		case Value::VEC3:
+			return outl.v3 * outr.v3;
+		case Value::MAT3:
+			return outl.m3 * outr.m3;
 		case Value::VEC4:
-			return outl.vec * outr.vec;
+			return outl.v4 * outr.v4;
 		case Value::MAT4:
-			return outl.mat * outr.mat;
+			return outl.m4 * outr.m4;
 		default:
 			break;
 	}
@@ -233,10 +259,14 @@ Value ExpEval::bOpDivide(const Value& l, const Value& r){
 	switch(outl.type){
 		case Value::FLOAT:
 			return outl.f / outr.f;
+		case Value::VEC3:
+			return outl.v3 / outr.v3;
+		case Value::MAT3:
+			return outl.m3 / outr.m3;
 		case Value::VEC4:
-			return outl.vec / outr.vec;
+			return outl.v4 / outr.v4;
 		case Value::MAT4:
-			return outl.mat / outr.mat;
+			return outl.m4 / outr.m4;
 		default:
 			break;
 	}
@@ -251,8 +281,10 @@ Value ExpEval::bOpPower(const Value& l, const Value& r){
 	switch(outl.type){
 		case Value::FLOAT:
 			return glm::pow(outl.f, outr.f);
+		case Value::VEC3:
+			return glm::pow(outl.v3, outr.v3);
 		case Value::VEC4:
-			return glm::pow(outl.vec, outr.vec);
+			return glm::pow(outl.v4, outr.v4);
 		default:
 			break;
 	}
@@ -269,8 +301,10 @@ Value ExpEval::bOpModulo(const Value& l, const Value& r){
 			return outl.i % outr.i;
 		case Value::FLOAT:
 			return glm::mod(outl.f, outr.f);
+		case Value::VEC3:
+			return glm::mod(outl.v3, outr.v3);
 		case Value::VEC4:
-			return glm::mod(outl.vec, outr.vec);
+			return glm::mod(outl.v4, outr.v4);
 		default:
 			break;
 	}
@@ -303,8 +337,10 @@ Value ExpEval::bOpLessThan(const Value& l, const Value& r){
 			return outl.i < outr.i;
 		case Value::FLOAT:
 			return outl.f < outr.f;
+		case Value::VEC3:
+			return glm::all(glm::lessThan(outl.v3, outr.v3));
 		case Value::VEC4:
-			return glm::all(glm::lessThan(outl.vec, outr.vec));
+			return glm::all(glm::lessThan(outl.v4, outr.v4));
 		default:
 			break;
 	}
@@ -321,8 +357,10 @@ Value ExpEval::bOpGreaterThan(const Value& l, const Value& r){
 			return outl.i > outr.i;
 		case Value::FLOAT:
 			return outl.f > outr.f;
+		case Value::VEC3:
+			return glm::all(glm::greaterThan(outl.v3, outr.v3));
 		case Value::VEC4:
-			return glm::all(glm::greaterThan(outl.vec, outr.vec));
+			return glm::all(glm::greaterThan(outl.v4, outr.v4));
 		default:
 			break;
 	}
@@ -339,8 +377,10 @@ Value ExpEval::bOpLessThanEqual(const Value& l, const Value& r){
 			return outl.i <= outr.i;
 		case Value::FLOAT:
 			return outl.f <= outr.f;
+		case Value::VEC3:
+			return glm::all(glm::lessThanEqual(outl.v3, outr.v3));
 		case Value::VEC4:
-			return glm::all(glm::lessThanEqual(outl.vec, outr.vec));
+			return glm::all(glm::lessThanEqual(outl.v4, outr.v4));
 		default:
 			break;
 	}
@@ -357,8 +397,10 @@ Value ExpEval::bOpGreaterThanEqual(const Value& l, const Value& r){
 			return outl.i >= outr.i;
 		case Value::FLOAT:
 			return outl.f >= outr.f;
+		case Value::VEC3:
+			return glm::all(glm::greaterThanEqual(outl.v3, outr.v3));
 		case Value::VEC4:
-			return glm::all(glm::greaterThanEqual(outl.vec, outr.vec));
+			return glm::all(glm::greaterThanEqual(outl.v4, outr.v4));
 		default:
 			break;
 	}
@@ -377,10 +419,14 @@ Value ExpEval::bOpEqual(const Value& l, const Value& r){
 			return outl.i == outr.i;
 		case Value::FLOAT:
 			return outl.f == outr.f;
+		case Value::VEC3:
+			return outl.v3 == outr.v3;
+		case Value::MAT3:
+			return outl.m3 == outr.m3;
 		case Value::VEC4:
-			return outl.vec == outr.vec;
+			return outl.v4 == outr.v4;
 		case Value::MAT4:
-			return outl.mat == outr.mat;
+			return outl.m4 == outr.m4;
 		default:
 			break;
 	}
@@ -399,10 +445,14 @@ Value ExpEval::bOpNotEqual(const Value& l, const Value& r){
 			return outl.i != outr.i;
 		case Value::FLOAT:
 			return outl.f != outr.f;
+		case Value::VEC3:
+			return outl.v3 != outr.v3;
+		case Value::MAT3:
+			return outl.m3 != outr.m3;
 		case Value::VEC4:
-			return outl.vec != outr.vec;
+			return outl.v4 != outr.v4;
 		case Value::MAT4:
-			return outl.mat != outr.mat;
+			return outl.m4 != outr.m4;
 		default:
 			break;
 	}

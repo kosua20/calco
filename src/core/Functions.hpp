@@ -43,8 +43,6 @@ private:
 	Value funcMin(const std::vector<Value>& args);
 	Value funcMax(const std::vector<Value>& args);
 	Value funcSaturate(const std::vector<Value>& args);
-	Value funcVec4();
-	Value funcMat4();
 	Value funcBin(const std::vector<Value>& args);
 	Value funcHex(const std::vector<Value>& args);
 	Value funcOct(const std::vector<Value>& args);
@@ -94,7 +92,9 @@ private:
 	Value funcTrunc(const std::vector<Value>& args);
 	Value funcOuterProduct(const std::vector<Value>& args);
 	Value funcDeterminant(const std::vector<Value>& args);
+	Value constructorVec3(const std::vector<Value>& args);
 	Value constructorVec4(const std::vector<Value>& args);
+	Value constructorMat3(const std::vector<Value>& args);
 	Value constructorMat4(const std::vector<Value>& args);
 
 	struct FunctionInfos {

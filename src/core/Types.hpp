@@ -39,7 +39,9 @@ struct Value {
 		BOOL = 0,
 		INTEGER,
 		FLOAT,
+		VEC3,
 		VEC4,
+		MAT3,
 		MAT4,
 		STRING
 	};
@@ -53,27 +55,36 @@ struct Value {
 	Value(double val) : type(FLOAT), f(val){}
 
 	Value(const std::string& val) : type(STRING), str(val){}
-
-	Value(const glm::mat4& val) : type(MAT4), mat(val){}
 	
-	Value(const glm::vec4& val) : type(VEC4), vec(val){}
+	Value(const glm::vec3& val) : type(VEC3), v3(val){}
+
+	Value(const glm::vec4& val) : type(VEC4), v4(val){}
+
+	Value(const glm::mat3& val) : type(MAT3), m3(val){}
+
+	Value(const glm::mat4& val) : type(MAT4), m4(val){}
 
 	bool convert(const Type& target, Value& outVal) const;
 
 	std::string toString() const;
-	
+
+
 	Type type;
-	glm::mat4 mat;
-	glm::vec4 vec;
-	double f;
-	long long i;
-	bool b;
+	union {
+		glm::mat4 m4;
+		glm::mat3 m3;
+		glm::vec4 v4;
+		glm::vec3 v3;
+		double f;
+		long long i;
+		bool b;
+	};
 	std::string str;
 };
 
 inline std::string TypeString(Value::Type type){
 	static const std::vector<std::string> typeStrs = {
-		"boolean", "integer", "float", "vec4", "mat4", "string"
+		"boolean", "integer", "float", "vec3", "vec4", "mat3", "mat4", "string"
 	};
 	return typeStrs[type];
 }

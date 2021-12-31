@@ -8,17 +8,48 @@ std::string Value::toString() const {
 			return std::to_string(i);
 		case FLOAT:
 			return std::to_string(f);
+		case VEC3:
+		{
+			std::string ms;
+			ms.append("| ");
+			for(int i = 0; i < 3; ++i){
+				ms.append(std::to_string(v3[i]));
+				if(i < 2){
+					ms.append(", ");
+				}
+			}
+			ms.append(" |");
+			return ms;
+		}
 		case VEC4:
 		{
 			std::string ms;
 			ms.append("| ");
 			for(int i = 0; i < 4; ++i){
-				ms.append(std::to_string(vec[i]));
+				ms.append(std::to_string(v4[i]));
 				if(i < 3){
 					ms.append(", ");
 				}
 			}
 			ms.append(" |");
+			return ms;
+		}
+		case MAT3:
+		{
+			std::string ms;
+			for(int i = 0; i < 3; ++i){
+				ms.append("| ");
+				for(int j = 0; j < 3; ++j){
+					ms.append(std::to_string(m3[i][j]));
+					if(j < 2){
+						ms.append(", ");
+					}
+				}
+				ms.append(" |");
+				if(i < 2){
+					ms.append("\n");
+				}
+			}
 			return ms;
 		}
 		case MAT4:
@@ -27,7 +58,7 @@ std::string Value::toString() const {
 			for(int i = 0; i < 4; ++i){
 				ms.append("| ");
 				for(int j = 0; j < 4; ++j){
-					ms.append(std::to_string(mat[i][j]));
+					ms.append(std::to_string(m4[i][j]));
 					if(j < 3){
 						ms.append(", ");
 					}
@@ -46,11 +77,11 @@ std::string Value::toString() const {
 }
 
 /** Type promotions;
- bool -> int, bool -> float, bool->vec4, bool->mat4
- int -> bool, int -> float, int->vec4, int->mat4
- float -> bool, float -> float, float->vec4, float->mat4
+ bool -> int, bool -> float, bool->vec3, bool->mat3, bool->vec4, bool->mat4
+ int -> bool, int -> float, int->vec3, int->mat3, int->vec4, int->mat4
+ float -> bool, float -> float, float->vec3, float->mat3, float->vec4, float->mat4
 
- vec4 and mat4 -> no promotion
+ vec3, vec4 and mat3, mat4 -> no promotion
  */
 bool Value::convert(const Type& target, Value& outVal) const {
 
@@ -74,8 +105,14 @@ bool Value::convert(const Type& target, Value& outVal) const {
 				case FLOAT:
 					outVal = b ? 1.0 : 0.0;
 					return true;
+				case VEC3:
+					outVal = glm::vec3(double(i));
+					return true;
 				case VEC4:
 					outVal = glm::vec4(double(i));
+					return true;
+				case MAT3:
+					outVal = glm::mat3(double(i));
 					return true;
 				case MAT4:
 					outVal = glm::mat4(double(i));
@@ -91,6 +128,12 @@ bool Value::convert(const Type& target, Value& outVal) const {
 					return true;
 				case FLOAT:
 					outVal = double(i);
+					return true;
+				case VEC3:
+					outVal = glm::vec3(double(i));
+					return true;
+				case MAT3:
+					outVal = glm::mat3(double(i));
 					return true;
 				case VEC4:
 					outVal = glm::vec4(double(i));
@@ -110,6 +153,12 @@ bool Value::convert(const Type& target, Value& outVal) const {
 				case INTEGER:
 					outVal = (long long)(f);
 					return true;
+				case VEC3:
+					outVal = glm::vec3(f);
+					return true;
+				case MAT3:
+					outVal = glm::mat3(f);
+					return true;
 				case VEC4:
 					outVal = glm::vec4(f);
 					return true;
@@ -120,6 +169,8 @@ bool Value::convert(const Type& target, Value& outVal) const {
 					break;
 			}
 			break;
+		case VEC3:
+		case MAT3:
 		case VEC4:
 		case MAT4:
 		default:
