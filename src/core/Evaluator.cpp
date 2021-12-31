@@ -555,27 +555,78 @@ Value ExpEval::process(const Ternary& exp) {
 
 Value ExpEval::process(const Member& exp) {
 	Value par = exp.parent->evaluate(*this);
-	static const std::unordered_map<std::string, size_t> memberDefs = {
-		{"x", 0}, {"y", 1}, {"z", 2}, {"w", 3}
-	};
-	auto index = memberDefs.find(exp.member);
 
-	// TODO: more complex getters
+	// Only on vector types.
+	if(par.type != Value::VEC3 && par.type != Value::MAT3 && par.type != Value::VEC4 && par.type != Value::MAT4){
+		EXIT(&exp, "Subscripts are only supported on vector/matrix types.");
+	}
+
+	// Check that the subscript can be converted to a set of indices.
+	static const std::unordered_map<char, size_t> getters = {
+		{'x', 0}, {'y', 1}, {'z', 2}, {'w', 3}
+	};
+
+	const size_t getSize = exp.member.size();
+	std::vector<size_t> indices(getSize);
+	for(size_t cid = 0; cid < getSize; ++cid){
+		const char& c = exp.member.at(cid);
+		if(getters.count(c) == 0){
+			EXIT(&exp, "Unknown subscript " + exp.member + ".");
+		}
+		indices[cid] = getters.at(c);
+	}
+
+	// Size check (after the conversion, so that 'v.thing' triggers a better error message)
+	if(getSize > 4){
+		EXIT(&exp, "Subscript " + exp.member + " is too long.");
+	}
+
+	// Prevalidation for smaller types.
+	if(par.type == Value::VEC3 || par.type == Value::MAT3){
+		for(size_t cid = 0; cid < getSize; ++cid){
+			if(indices[cid] >= 3){
+				EXIT(&exp, "Subscript " + exp.member + " is out of bound for type " + TypeString(par.type) + ".");
+			}
+		}
+	}
+
 	switch (par.type) {
-		case Value::MAT4:
-			if(index != memberDefs.end()){
-				return par.mat[index->second];
+		case Value::VEC3:
+			if(getSize == 1){
+				return par.v3[indices[0]];
+			}
+			if(getSize == 3){
+				return glm::vec3(par.v3[indices[0]], par.v3[indices[1]], par.v3[indices[2]]);
+			}
+			if(getSize == 4){
+				return glm::vec4(par.v3[indices[0]], par.v3[indices[1]], par.v3[indices[2]], par.v3[indices[3]]);
 			}
 			break;
 		case Value::VEC4:
-			if(index != memberDefs.end()){
-				return par.vec[index->second];
+			if(getSize == 1){
+				return par.v4[indices[0]];
+			}
+			if(getSize == 3){
+				return glm::vec3(par.v4[indices[0]], par.v4[indices[1]], par.v4[indices[2]]);
+			}
+			if(getSize == 4){
+				return glm::vec4(par.v4[indices[0]], par.v4[indices[1]], par.v4[indices[2]], par.v4[indices[3]]);
+			}
+			break;
+		case Value::MAT3:
+			if(getSize == 1){
+				return par.m3[indices[0]];
+			}
+			break;
+		case Value::MAT4:
+			if(getSize == 1){
+				return par.m4[indices[0]];
 			}
 			break;
 		default:
 			break;
 	}
-	EXIT(&exp, "Item has no member named " + exp.member + ".");
+	EXIT(&exp, "Unsupported subscript " + exp.member + " for type " + TypeString(par.type) + ".");
 }
 
 Value ExpEval::process(const Literal& exp) {
