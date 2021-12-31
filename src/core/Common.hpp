@@ -10,9 +10,12 @@
 #include <memory>
 #include <cmath>
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/common.hpp>
 #include <glm/gtc/constants.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 typedef unsigned char uchar;
 typedef unsigned int  uint;

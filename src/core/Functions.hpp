@@ -92,6 +92,14 @@ private:
 	Value funcTrunc(const std::vector<Value>& args);
 	Value funcOuterProduct(const std::vector<Value>& args);
 	Value funcDeterminant(const std::vector<Value>& args);
+
+	Value funcLookAt(const std::vector<Value>& args);
+	Value funcPerspective(const std::vector<Value>& args);
+	Value funcOrthographic(const std::vector<Value>& args);
+	Value funcAxisRotationMat(const std::vector<Value>& args);
+	Value funcTranslationMat(const std::vector<Value>& args);
+	Value funcScalingMat(const std::vector<Value>& args);
+
 	Value constructorVec3(const std::vector<Value>& args);
 	Value constructorVec4(const std::vector<Value>& args);
 	Value constructorMat3(const std::vector<Value>& args);

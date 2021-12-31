@@ -939,6 +939,56 @@ Value FunctionsLibrary::funcDeterminant(const std::vector<Value>& args){
 	EXIT("Unsupported type.");
 }
 
+Value FunctionsLibrary::funcLookAt(const std::vector<Value>& args){
+	assert(args.size() == 3);
+	if(allArgs(args, Value::VEC3)){
+		return glm::lookAt(args[0].v3, args[1].v3, args[2].v3);
+	}
+	EXIT("Unsupported type.");
+}
+
+Value FunctionsLibrary::funcPerspective(const std::vector<Value>& args){
+	assert(args.size() == 4);
+	if(allArgs(args, Value::FLOAT)){
+		return glm::mat4(glm::perspective(args[0].f, args[1].f, args[2].f, args[3].f));
+	}
+	EXIT("Unsupported type.");
+}
+
+Value FunctionsLibrary::funcOrthographic(const std::vector<Value>& args){
+	assert(args.size() == 6);
+	if(allArgs(args, Value::FLOAT)){
+		return glm::mat4(glm::ortho(args[0].f, args[1].f, args[2].f, args[3].f, args[4].f, args[5].f));
+	}
+	EXIT("Unsupported type.");
+}
+
+Value FunctionsLibrary::funcAxisRotationMat(const std::vector<Value>& args){
+	assert(args.size() == 2);
+	if(args[0].type == Value::FLOAT && args[1].type == Value::VEC3){
+		return glm::rotate(glm::mat4(1.0f), float(args[0].f), args[1].v3);
+	}
+	EXIT("Unsupported type.");
+}
+
+Value FunctionsLibrary::funcTranslationMat(const std::vector<Value>& args){
+	assert(args.size() == 1);
+	if(args[0].type == Value::VEC3){
+		return glm::translate(glm::mat4(1.0f), args[0].v3);
+	}
+	EXIT("Unsupported type.");
+}
+
+Value FunctionsLibrary::funcScalingMat(const std::vector<Value>& args){
+	assert(args.size() == 1);
+	if(args[0].type == Value::VEC3){
+		return glm::scale(glm::mat4(1.0f), args[0].v3);
+	} else if(args[0].type == Value::FLOAT){
+		return glm::scale(glm::mat4(1.0f), glm::vec3(args[0].f));
+	}
+	EXIT("Unsupported type.");
+}
+
 Value FunctionsLibrary::constructorVec3(const std::vector<Value>& args){
 	if(args.size() == 1){
 		switch (args[0].type) {
@@ -1137,6 +1187,14 @@ FunctionsLibrary::FunctionsLibrary(){
 		{ "trunc", { &FunctionsLibrary::funcTrunc, {1} } },
 		{ "outerProduct", { &FunctionsLibrary::funcOuterProduct, {2} } },
 		{ "determinant", { &FunctionsLibrary::funcDeterminant, {1} } },
+
+		{ "lookAt", { &FunctionsLibrary::funcLookAt, {3} } },
+		{ "perspective", { &FunctionsLibrary::funcPerspective, {4} } },
+		{ "ortho", { &FunctionsLibrary::funcOrthographic, {6} } },
+		{ "rotation", { &FunctionsLibrary::funcAxisRotationMat, {2} } },
+		{ "translation", { &FunctionsLibrary::funcTranslationMat, {1} } },
+		{ "scale", { &FunctionsLibrary::funcScalingMat, {1} } },
+
 		{ "vec3", { &FunctionsLibrary::constructorVec3, {1, 3} } },
 		{ "float3", { &FunctionsLibrary::constructorVec3, {1, 3} } },
 		{ "vec4", { &FunctionsLibrary::constructorVec4, {1, 2, 4} } },
