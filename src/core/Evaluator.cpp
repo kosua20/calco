@@ -70,7 +70,7 @@ Value ExpLogger::process(const FunctionCall& exp)  {
 
 #define EXIT(exp, msg) if(true){ if(!_failed){ _failedMessage = msg; _failedExpression = exp; }; _failed = true; return false; }
 
-ExpEval::ExpEval(const Scope& scope, const FunctionsLibrary& stdlib) : _globalScope(scope), _stdlib(stdlib) {}
+ExpEval::ExpEval(const Scope& scope, FunctionsLibrary& stdlib) : _globalScope(scope), _stdlib(stdlib) {}
 
 Value ExpEval::uOpIdentity(const Value& v){
 	switch(v.type){
@@ -505,37 +505,23 @@ Value ExpEval::process(const Ternary& exp) {
 
 Value ExpEval::process(const Member& exp) {
 	Value par = exp.parent->evaluate(*this);
+	static const std::unordered_map<std::string, size_t> memberDefs = {
+		{"x", 0}, {"y", 1}, {"z", 2}, {"w", 3}
+	};
+	auto index = memberDefs.find(exp.member);
+
 	// TODO: more complex getters
 	switch (par.type) {
 		case Value::MAT4:
-			if(exp.member == "x"){
-				return par.mat[0];
-			}
-			if(exp.member == "y"){
-				return par.mat[1];
-			}
-			if(exp.member == "z"){
-				return par.mat[2];
-			}
-			if(exp.member == "w"){
-				return par.mat[3];
+			if(index != memberDefs.end()){
+				return par.mat[index->second];
 			}
 			break;
 		case Value::VEC4:
-			if(exp.member == "x"){
-				return par.vec.x;
-			}
-			if(exp.member == "y"){
-				return par.vec.y;
-			}
-			if(exp.member == "z"){
-				return par.vec.z;
-			}
-			if(exp.member == "w"){
-				return par.vec.w;
+			if(index != memberDefs.end()){
+				return par.vec[index->second];
 			}
 			break;
-
 		default:
 			break;
 	}
@@ -604,6 +590,9 @@ Value ExpEval::process(const FunctionCall& exp)  {
 	for(const auto& arg : exp.args){
 		argValues.push_back(arg->evaluate(*this));
 	}
+	if(_failed){
+		return false;
+	}
 
 	// Check user defined functions
 	if(_globalScope.hasFunc(exp.name)){
@@ -624,8 +613,11 @@ Value ExpEval::process(const FunctionCall& exp)  {
 	}
 
 	if(_stdlib.hasFunc(exp.name)){
-		// TODO: arg check.
-		return _stdlib.eval(exp, argValues);
+		// Check if number of arguments is valid.
+		if(!_stdlib.validArgCount(exp.name, exp.args.size())){
+			EXIT(&exp, "Incorrect number of arguments for function " + exp.name + ".");
+		}
+		return _stdlib.eval(exp.name, argValues);
 	}
 
 	EXIT(&exp, "Undefined function " + exp.name + ".");
@@ -716,7 +708,10 @@ Value FuncSubstitution::process(const FunctionCall& exp)  {
 	}
 
 	if(_stdlib.hasFunc(exp.name)){
-		// TODO: check arg count
+		// Check if number of arguments is valid.
+		if(!_stdlib.validArgCount(exp.name, exp.args.size())){
+			EXIT(&exp, "Incorrect number of arguments for function " + exp.name + ".");
+		}
 		return true;
 	}
 	EXIT(&exp, "Undefined function " + exp.name + ".");

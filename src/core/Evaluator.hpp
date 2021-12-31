@@ -19,7 +19,7 @@ public:
 
 class ExpEval final : public TreeVisitor {
 public:
-	ExpEval(const Scope& scope, const FunctionsLibrary& stdlib);
+	ExpEval(const Scope& scope, FunctionsLibrary& stdlib);
 
 	Value process(const Unary& exp) override;
 	Value process(const Binary& exp) override;
@@ -62,7 +62,7 @@ private:
 	Value bOpBoolXor(const Value& l, const Value& r);
 
 	const Scope& _globalScope;
-	const FunctionsLibrary& _stdlib;
+	FunctionsLibrary& _stdlib;
 
 	std::stack<Scope> _localScopes;
 
