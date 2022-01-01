@@ -4,7 +4,18 @@
 
 class Calculator {
 public:
-	bool evaluate(const std::string& input, std::string& output);
+
+	struct SemanticInfo {
+		enum class Type {
+			LITERAL, VARIABLE, FUNCTION, OPERATOR, SEPARATOR
+		};
+
+		Type type;
+		long location;
+		long size;
+	};
+
+	bool evaluate(const std::string& input, std::string& output, std::vector<SemanticInfo>& info);
 
 private:
 
@@ -12,6 +23,5 @@ private:
 	FunctionsLibrary _stdlib;
 
 	unsigned long _funcCounter = 0;
-	// User defined functions...
-	// Settings
+
 };

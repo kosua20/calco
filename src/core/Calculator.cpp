@@ -22,7 +22,7 @@ std::string logTree(const Expression::Ptr& exp ){
 	return finalStr.str;
 }
 
-bool Calculator::evaluate(const std::string& input, std::string& output){
+bool Calculator::evaluate(const std::string& input, std::string& output, std::vector<SemanticInfo>& infos){
 	const std::string& cleanInput = input;
 	// Scanning
 	Scanner scanner(cleanInput);
@@ -53,6 +53,41 @@ bool Calculator::evaluate(const std::string& input, std::string& output){
 		}
 		return false;
 	}
+
+	// Generate highlighting info.
+	const auto& tokens = scanner.tokens();
+	const size_t tokenCount = tokens.size();
+	infos.resize(tokenCount);
+
+	for(size_t tid = 0; tid < tokenCount; ++tid){
+
+		const Token& token = tokens[tid];
+		switch(token.type){
+			case Token::Type::Operator:
+			{
+				const bool isSeparator = token.opVal == Operator::OpenParenth || token.opVal == Operator::CloseParenth || token.opVal == Operator::Comma;
+				infos[tid].type = isSeparator ? SemanticInfo::Type::SEPARATOR : SemanticInfo::Type::OPERATOR;
+				break;
+			}
+			case Token::Type::Identifier:
+			{
+				if(tid + 1 < tokenCount && tokens[tid+1].type == Token::Type::Operator && tokens[tid+1].opVal == Operator::OpenParenth){
+					infos[tid].type =  SemanticInfo::Type::FUNCTION;
+				} else {
+					infos[tid].type =  SemanticInfo::Type::VARIABLE;
+				}
+				break;
+			}
+			case Token::Type::Float:
+			case Token::Type::Integer:
+			default:
+				infos[tid].type = SemanticInfo::Type::LITERAL;
+			break;
+		}
+		infos[tid].location = token.dbgStartPos;
+		infos[tid].size = token.dbgEndPos - token.dbgStartPos;
+	}
+
 	// Three possible cases:
 	// * variable definition: evaluate value based on context and store (value+name) in context
 	// * function definition: replace existing variables by their value, then store (tree+name+args names) in context
