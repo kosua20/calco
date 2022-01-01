@@ -2,6 +2,10 @@
 #include "core/Common.hpp"
 #include <unordered_map>
 
+enum class Format {
+	BINARY, DECIMAL, OCTAL, HEXA
+};
+
 enum class Operator {
 	OpenParenth, CloseParenth, Plus, Minus, Product, Divide, Power, Modulo, Assign, ShiftLeft, ShiftRight, BitOr, BitAnd, BitNot, BitXor, BoolOr, BoolAnd, BoolNot, BoolXor, QuestionMark, Colon, LessThan, GreaterThan, LessThanEqual, GreaterThanEqual, Equal, Different, Comma, Dot
 };
@@ -66,7 +70,7 @@ struct Value {
 
 	bool convert(const Type& target, Value& outVal) const;
 
-	std::string toString() const;
+	std::string toString(Format format) const;
 
 
 	Type type;

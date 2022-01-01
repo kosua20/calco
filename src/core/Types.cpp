@@ -1,20 +1,48 @@
 #include "core/Types.hpp"
 
-std::string Value::toString() const {
+std::string Value::toString(Format format) const {
 	switch (type) {
 		case BOOL:
 			return b ? "true" : "false";
 		case INTEGER:
-			return std::to_string(i);
+		{
+			switch(format){
+				case Format::BINARY:
+				{
+					const unsigned long long ai = std::abs(i);
+					const unsigned int bitCount = (unsigned int)((std::floor(std::log2(double(std::max(ai, 2ull))))) + 1);
+					std::string out(bitCount, '0');
+					for(unsigned int bid = 0; bid < bitCount; ++bid){
+						out[bitCount - bid - 1] = (ai & (1u << bid)) ? '1' : '0';
+					}
+					return "0b" + out;
+				}
+				case Format::OCTAL:
+				{
+					char tmpBuffer[256];
+					snprintf(tmpBuffer, sizeof(tmpBuffer), "0o%llo", i);
+					return std::string(tmpBuffer);
+				}
+				case Format::HEXA:
+				{
+					char tmpBuffer[256];
+					snprintf(tmpBuffer, sizeof(tmpBuffer), "0x%llX", i);
+					return std::string(tmpBuffer);
+				}
+				case Format::DECIMAL:
+				default:
+					return std::to_string(i);
+			}
+		}
 		case FLOAT:
 			return std::to_string(f);
 		case VEC3:
 		{
 			std::string ms;
 			ms.append("| ");
-			for(int i = 0; i < 3; ++i){
-				ms.append(std::to_string(v3[i]));
-				if(i < 2){
+			for(int cid = 0; cid < 3; ++cid){
+				ms.append(std::to_string(v3[cid]));
+				if(cid < 2){
 					ms.append(", ");
 				}
 			}
@@ -25,9 +53,9 @@ std::string Value::toString() const {
 		{
 			std::string ms;
 			ms.append("| ");
-			for(int i = 0; i < 4; ++i){
-				ms.append(std::to_string(v4[i]));
-				if(i < 3){
+			for(int cid = 0; cid < 4; ++cid){
+				ms.append(std::to_string(v4[cid]));
+				if(cid < 3){
 					ms.append(", ");
 				}
 			}
@@ -37,16 +65,16 @@ std::string Value::toString() const {
 		case MAT3:
 		{
 			std::string ms;
-			for(int i = 0; i < 3; ++i){
+			for(int cid = 0; cid < 3; ++cid){
 				ms.append("| ");
-				for(int j = 0; j < 3; ++j){
-					ms.append(std::to_string(m3[i][j]));
-					if(j < 2){
+				for(int cjd = 0; cjd < 3; ++cjd){
+					ms.append(std::to_string(m3[cid][cjd]));
+					if(cjd < 2){
 						ms.append(", ");
 					}
 				}
 				ms.append(" |");
-				if(i < 2){
+				if(cid < 2){
 					ms.append("\n");
 				}
 			}
@@ -55,16 +83,16 @@ std::string Value::toString() const {
 		case MAT4:
 		{
 			std::string ms;
-			for(int i = 0; i < 4; ++i){
+			for(int cid = 0; cid < 4; ++cid){
 				ms.append("| ");
-				for(int j = 0; j < 4; ++j){
-					ms.append(std::to_string(m4[i][j]));
-					if(j < 3){
+				for(int cjd = 0; cjd < 4; ++cjd){
+					ms.append(std::to_string(m4[cid][cjd]));
+					if(cjd < 3){
 						ms.append(", ");
 					}
 				}
 				ms.append(" |");
-				if(i < 3){
+				if(cid < 3){
 					ms.append("\n");
 				}
 			}
@@ -92,7 +120,7 @@ bool Value::convert(const Type& target, Value& outVal) const {
 
 	// String conversion is always possible.
 	if(target == Value::STRING){
-		outVal = toString();
+		outVal = toString(Format::DECIMAL);
 		return true;
 	}
 
