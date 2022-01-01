@@ -124,6 +124,8 @@ public:
 		return _failedExpression;
 	}
 
+	void registerError(const std::string& msg, Expression const * exp);
+
 protected:
 
 	std::string _failedMessage;
@@ -261,7 +263,7 @@ public:
 private:
 
 	Value _value;
-	bool _hasValue;
+	bool _hasValue = false;
 };
 
 class FunctionCall final : public Expression {

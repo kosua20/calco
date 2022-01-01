@@ -251,6 +251,14 @@ Status TreeVisitor::getStatus() const {
 	return !_failed ? Status(true) : Status(0, _failedMessage);
 }
 
+void TreeVisitor::registerError(const std::string& msg, Expression const * exp){
+	if(!_failed){
+		_failedMessage = msg;
+		_failedExpression = exp;
+		_failed = true;
+	}
+}
+
 Status Expression::evaluate(TreeVisitor& visitor, Value& outValue){
 	outValue = evaluate(visitor);
 	return visitor.getStatus();

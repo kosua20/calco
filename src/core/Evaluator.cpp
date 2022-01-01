@@ -68,7 +68,7 @@ Value ExpLogger::process(const FunctionCall& exp)  {
 	return exp.name + "( " + args + " )";
 }
 
-#define EXIT(exp, msg) if(true){ if(!_failed){ _failedMessage = msg; _failedExpression = exp; }; _failed = true; return false; }
+#define EXIT(exp, msg) registerError(msg, exp); return false;
 
 ExpEval::ExpEval(const Scope& scope, FunctionsLibrary& stdlib) : _globalScope(scope), _stdlib(stdlib) {}
 
@@ -691,6 +691,7 @@ Value ExpEval::process(const FunctionCall& exp)  {
 	for(const auto& arg : exp.args){
 		argValues.push_back(arg->evaluate(*this));
 	}
+	// Early exit if existing failure (see evaluation below for why this is important).
 	if(_failed){
 		return false;
 	}
@@ -701,6 +702,7 @@ Value ExpEval::process(const FunctionCall& exp)  {
 		const auto& funcDef = _globalScope.getFunc(exp.name);
 		const size_t expectedCount = funcDef->args.size();
 		if(expectedCount != argCount){
+			// By exiting early here, we don't allow user overrides of standard library functions with a different number of arguments.
 			EXIT(&exp, "Incorrect number of arguments for function " + exp.name + ", expected " + std::to_string(expectedCount) + ".");
 		}
 
@@ -718,7 +720,12 @@ Value ExpEval::process(const FunctionCall& exp)  {
 		if(!_stdlib.validArgCount(exp.name, exp.args.size())){
 			EXIT(&exp, "Incorrect number of arguments for function " + exp.name + ".");
 		}
-		return _stdlib.eval(exp.name, argValues);
+		const Value result = _stdlib.eval(exp.name, argValues, *this);
+		// If we are here, the failed flag can only mean that the failure was encountered during the function evaluation (thanks to the early exit above).
+		if(_failed){
+			_failedExpression = &exp;
+		}
+		return result;
 	}
 
 	EXIT(&exp, "Undefined function " + exp.name + ".");

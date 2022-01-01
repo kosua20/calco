@@ -19,6 +19,7 @@ public:
 
 class ExpEval final : public TreeVisitor {
 public:
+
 	ExpEval(const Scope& scope, FunctionsLibrary& stdlib);
 
 	Value process(const Unary& exp) override;
