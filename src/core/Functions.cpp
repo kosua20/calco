@@ -156,7 +156,8 @@ Value FunctionsLibrary::funcSaturate(const std::vector<Value>& args, ExpEval& ev
 Value FunctionsLibrary::funcBin(const std::vector<Value>& args, ExpEval& evaluator, const std::string& name){
 	assert(args.size() == 1);
 	if(args[0].type == Value::INTEGER){
-		// TODO: modify output flag
+		evaluator.setFormat(Format::BINARY);
+		return args[0];
 	}
 	EXIT("Unsupported type " + TypeString(args[0].type) + " for function " + name + ".");
 }
@@ -164,7 +165,8 @@ Value FunctionsLibrary::funcBin(const std::vector<Value>& args, ExpEval& evaluat
 Value FunctionsLibrary::funcHex(const std::vector<Value>& args, ExpEval& evaluator, const std::string& name){
 	assert(args.size() == 1);
 	if(args[0].type == Value::INTEGER){
-		// TODO: modify output flag
+		evaluator.setFormat(Format::HEXA);
+		return args[0];
 	}
 	EXIT("Unsupported type " + TypeString(args[0].type) + " for function " + name + ".");
 }
@@ -172,7 +174,8 @@ Value FunctionsLibrary::funcHex(const std::vector<Value>& args, ExpEval& evaluat
 Value FunctionsLibrary::funcOct(const std::vector<Value>& args, ExpEval& evaluator, const std::string& name){
 	assert(args.size() == 1);
 	if(args[0].type == Value::INTEGER){
-		// TODO: modify output flag
+		evaluator.setFormat(Format::OCTAL);
+		return args[0];
 	}
 	EXIT("Unsupported type " + TypeString(args[0].type) + " for function " + name + ".");
 }
@@ -180,7 +183,8 @@ Value FunctionsLibrary::funcOct(const std::vector<Value>& args, ExpEval& evaluat
 Value FunctionsLibrary::funcDec(const std::vector<Value>& args, ExpEval& evaluator, const std::string& name){
 	assert(args.size() == 1);
 	if(args[0].type == Value::INTEGER){
-		// TODO: modify output flag
+		evaluator.setFormat(Format::DECIMAL);
+		return args[0];
 	}
 	EXIT("Unsupported type " + TypeString(args[0].type) + " for function " + name + ".");
 }

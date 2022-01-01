@@ -58,7 +58,6 @@ bool Calculator::evaluate(const std::string& input, std::string& output){
 	// * function definition: replace existing variables by their value, then store (tree+name+args names) in context
 	// * general expression to evaluate: evaluate value based on context and log the result
 
-
 	// Variable definition
 	if(auto varDef = std::dynamic_pointer_cast<VariableDef>(parser.tree())){
 
@@ -69,10 +68,10 @@ bool Calculator::evaluate(const std::string& input, std::string& output){
 		if(evalResult.success){
 			// Store result in global scope.
 			_globals.setVar(varDef->name, outValue);
-			output = varDef->name + " = " + outValue.toString();
+			output = varDef->name + " = " + outValue.toString(evaluator.getFormat());
 			return true;
 		} else {
-			const Expression* failExp = evaluator.getErrorExpression();
+			//const Expression* failExp = evaluator.getErrorExpression();
 			output = "Evaluation error: " + evalResult.message;
 			return false;
 		}
@@ -98,7 +97,7 @@ bool Calculator::evaluate(const std::string& input, std::string& output){
 			output = funDef->name + " defined";
 			++_funcCounter;
 		} else {
-			const Expression* failExp = flattener.getErrorExpression();
+			//const Expression* failExp = flattener.getErrorExpression();
 			output = "Evaluation error: " + evalResult.message;
 			return false;
 		}
@@ -109,10 +108,10 @@ bool Calculator::evaluate(const std::string& input, std::string& output){
 		const Status evalResult = parser.tree()->evaluate(evaluator, outValue);
 
 		if(evalResult.success){
-			output = "= " + outValue.toString();
+			output = "= " + outValue.toString(evaluator.getFormat());
 			return true;
 		} else {
-			const Expression* failExp = evaluator.getErrorExpression();
+			//const Expression* failExp = evaluator.getErrorExpression();
 			output = "Evaluation error: " + evalResult.message;
 			return false;
 		}

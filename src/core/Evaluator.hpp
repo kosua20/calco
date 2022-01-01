@@ -33,6 +33,9 @@ public:
 	Value process(		FunctionVar& exp) override;
 	Value process(const FunctionCall& exp) override;
 
+	void setFormat(Format format){ _format = format; };
+	Format getFormat() const { return _format; }
+
 private:
 	bool convertValues(const Value& l, const Value& r, Value::Type type, Value& outl, Value& outr);
 	bool alignValues(const Value& l, const Value& r, Value& outl, Value& outr, Value::Type minType);
@@ -66,7 +69,7 @@ private:
 	FunctionsLibrary& _stdlib;
 
 	std::stack<Scope> _localScopes;
-
+	Format _format = Format::DECIMAL;
 };
 
 class FuncSubstitution final : public TreeVisitor {
