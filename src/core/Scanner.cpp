@@ -333,7 +333,7 @@ Status Scanner::scan(){
 			_tokens.back().type = Token::Type::Operator;
 			_tokens.back().opVal = opType;
 			_tokens.back().dbgStartPos = startPosition;
-			_tokens.back().dbgEndPos = startPosition + opSize - 1;
+			_tokens.back().dbgEndPos = startPosition + opSize;
 			position += opSize;
 			continue;
 		}
