@@ -13,28 +13,35 @@
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
 
+#include <unordered_map>
+
 #include "font_data_Inconsolata.h"
 #include "font_data_Lato.h"
 
 struct UIStyle {
+
+	enum Color {
+		DEFAULT = 0, OUTPUT, ERROR, LITERAL, VARIABLE, FUNCTION, OPERATOR, SEPARATOR, COUNT
+	};
+
 	ImFont* consoleFont = nullptr;
 	ImFont* textFont = nullptr;
+	ImVec4 colors[UIStyle::Color::COUNT];
 };
 
 struct UILine {
 
-	enum class Type {
-		INPUT, OUTPUT, ERROR
+	struct UIWord {
+
+		UIWord(const std::string& _text, UIStyle::Color _color, bool _pad = false) : text(_text), color(_color), pad(_pad) {}
+
+		std::string text;
+		UIStyle::Color color;
+		bool pad;
 	};
 
-	const std::string text;
-	const Type type;
-	// TODO: more complex coloring info.
-	// TODO: move type assignment of subsets into the calculator itself (shared by app and CL).
+	std::vector<UIWord> words;
 
-	UILine(const std::string& atext, Type atype ) : text(atext), type(atype) {
-
-	}
 };
 
 struct UIState {
@@ -146,6 +153,14 @@ GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 	colors[ImGuiCol_NavHighlight]           = ImVec4(0.05f, 0.61f, 0.73f, 1.00f);
 	colors[ImGuiCol_PopupBg]           		= ImVec4(0.15f, 0.15f, 0.15f, 0.94f);
 
+	uiStyle.colors[UIStyle::Color::DEFAULT] = colors[ImGuiCol_Text];
+	uiStyle.colors[UIStyle::Color::OUTPUT] = ImVec4(0.9f, 0.95f, 1.0f, 1.0f);
+	uiStyle.colors[UIStyle::Color::ERROR] = ImVec4(0.8f, 0.2f, 0.1f, 1.0f);
+	uiStyle.colors[UIStyle::Color::LITERAL] = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+	uiStyle.colors[UIStyle::Color::VARIABLE] = ImVec4(0.258824f, 0.545098f, 0.000000f, 1.0f);
+	uiStyle.colors[UIStyle::Color::FUNCTION] = ImVec4(0.886275f, 0.035294f, 0.113725f, 1.0f);
+	uiStyle.colors[UIStyle::Color::OPERATOR] = ImVec4(0.713726f, 0.560784f, 0.000000f, 1.0f);
+	uiStyle.colors[UIStyle::Color::SEPARATOR] = ImVec4(0.603922f, 0.415686f, 0.600000f, 1.0f);
 	return window;
 }
 
@@ -154,7 +169,6 @@ int textCallback(ImGuiInputTextCallbackData* data){
 	switch (data->EventFlag) {
 		case ImGuiInputTextFlags_CallbackHistory:
 		{
-			// Example of HISTORY
 			const int prevHistoryPos = state.historyPos;
 			const int historySize = int(state.commands.size());
 			if(data->EventKey == ImGuiKey_UpArrow){
@@ -269,31 +283,34 @@ int main(int, char** ){
 			ImGui::BeginChild("ScrollingRegion", ImVec2(0, -heightToReserve), false, ImGuiWindowFlags_HorizontalScrollbar);
 
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1)); // Tighten spacing
+			ImGui::PushFont(style.consoleFont);
+
 			const size_t lineCount = state.lines.size();
 			for(size_t lid = 0; lid < lineCount; ++lid){
-				const UILine& line = state.lines[lid];
 
-				bool pushedStyle = false;
-				if(line.type == UILine::Type::ERROR){
-					ImGui::PushFont(style.consoleFont);
-					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
-					pushedStyle = true;
-				}
-
-				if(line.type == UILine::Type::OUTPUT){
-					ImGui::PushFont(style.consoleFont);
-					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.8f, 0.1f, 1.0f));
-					pushedStyle = true;
-				}
-
-				ImGui::TextUnformatted(line.text.c_str());
-
-				if(pushedStyle){
+				const auto& words = state.lines[lid].words;
+				bool first = true;
+				for(const auto& word : words){
+					if(!first){
+						ImGui::SameLine(0,0);
+					}
+					first = false;
+					ImGui::PushStyleColor(ImGuiCol_Text, style.colors[word.color]);
+					if(word.pad){
+						ImGui::TextUnformatted(" ");
+						ImGui::SameLine(0,0);
+					}
+					ImGui::TextUnformatted(word.text.c_str());
+					if(word.pad){
+						ImGui::SameLine(0,0);
+						ImGui::TextUnformatted(" ");
+					}
 					ImGui::PopStyleColor();
-					ImGui::PopFont();
 				}
 
 			}
+
+			ImGui::PopFont();
 			ImGui::PopStyleVar();
 
 			// Autoscroll to bottom.
@@ -305,22 +322,37 @@ int main(int, char** ){
 			// Input line.
 
 			bool reclaimFocus = false;
-			const ImGuiInputTextFlags inputTextFlags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CharsNoBlank;
+			const ImGuiInputTextFlags inputTextFlags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory;
 
 			ImGui::SetNextItemWidth(float(winW) - 2*ImGui::GetStyle().ItemSpacing.x);
 			if(ImGui::InputText("##Input", buffer, 1024, inputTextFlags, &textCallback, &state)){
 				std::string newLine(buffer);
 				buffer[0] = '\0';
 				if(!newLine.empty()){
-					state.lines.emplace_back(newLine, UILine::Type::INPUT);
 					state.commands.push_back(newLine);
 					state.historyPos = -1;
 					state.savedPartialCommand = "";
 					state.savedCursor = 0;
+
 					std::string resultLine;
-					const bool success = calculator.evaluate(newLine, resultLine);
-					state.lines.emplace_back(resultLine, success ? UILine::Type::OUTPUT : UILine::Type::ERROR);
-					// TODO: output result properly.
+					std::vector<Calculator::SemanticInfo> syntaxInfos;
+					const bool success = calculator.evaluate(newLine, resultLine, syntaxInfos);
+
+					UILine& line = state.lines.emplace_back();
+
+					static const std::unordered_map<Calculator::SemanticInfo::Type, UIStyle::Color> syntaxToColor = {
+						{ Calculator::SemanticInfo::Type::LITERAL, UIStyle::Color::LITERAL},
+						{ Calculator::SemanticInfo::Type::VARIABLE, UIStyle::Color::VARIABLE},
+						{ Calculator::SemanticInfo::Type::FUNCTION, UIStyle::Color::FUNCTION},
+						{ Calculator::SemanticInfo::Type::OPERATOR, UIStyle::Color::OPERATOR},
+						{ Calculator::SemanticInfo::Type::SEPARATOR, UIStyle::Color::SEPARATOR}
+					};
+
+					for(const auto& infos : syntaxInfos){
+						line.words.emplace_back(newLine.substr(infos.location, infos.size), syntaxToColor.at(infos.type), infos.type == Calculator::SemanticInfo::Type::OPERATOR);
+					}
+					state.lines.emplace_back();
+					state.lines.back().words = { { resultLine, success ? UIStyle::Color::OUTPUT : UIStyle::Color::ERROR } };
 				}
 				reclaimFocus = true;
 			}
