@@ -18,8 +18,8 @@ struct Token {
 	std::string sVal = "Unknown";
 	Operator opVal = Operator::Assign;
 
-	long dbgStartPos;
-	long dbgEndPos;
+	long location;
+	long size;
 };
 
 

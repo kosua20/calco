@@ -43,7 +43,7 @@
  */
 
 #define EXIT_IF_FAILED(a) if(a == nullptr){ _failedToken = _failed ? _failedToken : _position; _failed = true; return nullptr;}
-#define EXIT(message) if(true){ if(!_failed){ _failedToken = _position; _failedMessage = message; }; _failed = true; return nullptr; }
+#define EXIT(message) if(true){ if(!_failed){ _failedToken = _position; _failedMessage = message; _failed = true; };  return nullptr; }
 
 Parser::Parser(const std::vector<Token>& tokens) : _tokens(tokens), _tree(nullptr), _position(0), _tokenCount(tokens.size()) {
 
@@ -131,15 +131,16 @@ Parser::Result Parser::statement(){
 		if(current.type != Token::Type::Identifier){
 			EXIT("Missing variable or function name");
 		}
-		advance();
+		const long position = _position;
 		const std::string name = current.sVal;
+		advance();
 
 		// Basic variable.
 		if(match(Operator::Assign)){
 			// Parse the rest of the line.
 			Result expr = expression();
 			EXIT_IF_FAILED(expr);
-			return Expression::Ptr(new VariableDef(name, expr));
+			return Expression::Ptr(new VariableDef(name, expr, position));
 		}
 
 		if(match(Operator::OpenParenth)){
@@ -153,7 +154,7 @@ Parser::Result Parser::statement(){
 				// Parse the rest of the line.
 				Result expr = expression();
 				EXIT_IF_FAILED(expr);
-				return Expression::Ptr(new FunctionDef(name, {}, expr));
+				return Expression::Ptr(new FunctionDef(name, {}, expr, position));
 			}
 
 			// Else parse arguments
@@ -180,7 +181,7 @@ Parser::Result Parser::statement(){
 			Result expr = expression();
 			EXIT_IF_FAILED(expr);
 			
-			return Expression::Ptr(new FunctionDef(name, arguments, expr));
+			return Expression::Ptr(new FunctionDef(name, arguments, expr, position));
 
 		}
 		// Else impossible
@@ -216,7 +217,7 @@ Parser::Result Parser::ternary(){
 	Result fail = boolOr();
 	EXIT_IF_FAILED(fail);
 
-	Expression::Ptr root = std::make_shared<Ternary>(condition, pass, fail);
+	Expression::Ptr root = std::make_shared<Ternary>(condition, pass, fail, condition->dbgStartPos, fail->dbgEndPos);
 	return root;
 }
 
@@ -229,7 +230,7 @@ Parser::Result Parser::boolOr(){
 		Result right = boolXor();
 		EXIT_IF_FAILED(right);
 
-		root = std::make_shared<Binary>(Operator::BoolOr, root, right);
+		root = std::make_shared<Binary>(Operator::BoolOr, root, right, left->dbgStartPos, right->dbgEndPos);
 	}
 	return root;
 }
@@ -243,7 +244,7 @@ Parser::Result Parser::boolXor(){
 		Result right = boolAnd();
 		EXIT_IF_FAILED(right);
 
-		root = std::make_shared<Binary>(Operator::BoolXor, root, right);
+		root = std::make_shared<Binary>(Operator::BoolXor, root, right, left->dbgStartPos, right->dbgEndPos);
 	}
 	return root;
 }
@@ -257,7 +258,7 @@ Parser::Result Parser::boolAnd(){
 		Result right = bitOr();
 		EXIT_IF_FAILED(right);
 
-		root = std::make_shared<Binary>(Operator::BoolAnd, root, right);
+		root = std::make_shared<Binary>(Operator::BoolAnd, root, right, left->dbgStartPos, right->dbgEndPos);
 	}
 	return root;
 }
@@ -271,7 +272,7 @@ Parser::Result Parser::bitOr(){
 		Result right = bitXor();
 		EXIT_IF_FAILED(right);
 
-		root = std::make_shared<Binary>(Operator::BitOr, root, right);
+		root = std::make_shared<Binary>(Operator::BitOr, root, right, left->dbgStartPos, right->dbgEndPos);
 	}
 	return root;
 }
@@ -285,7 +286,7 @@ Parser::Result Parser::bitXor(){
 		Result right = bitAnd();
 		EXIT_IF_FAILED(right);
 
-		root = std::make_shared<Binary>(Operator::BitXor, root, right);
+		root = std::make_shared<Binary>(Operator::BitXor, root, right, left->dbgStartPos, right->dbgEndPos);
 	}
 	return root;
 }
@@ -299,7 +300,7 @@ Parser::Result Parser::bitAnd(){
 		Result right = equality();
 		EXIT_IF_FAILED(right);
 
-		root = std::make_shared<Binary>(Operator::BitAnd, root, right);
+		root = std::make_shared<Binary>(Operator::BitAnd, root, right, left->dbgStartPos, right->dbgEndPos);
 	}
 	return root;
 }
@@ -314,7 +315,7 @@ Parser::Result Parser::equality(){
 		Result right = comparison();
 		EXIT_IF_FAILED(right);
 
-		root = std::make_shared<Binary>(op, root, right);
+		root = std::make_shared<Binary>(op, root, right, left->dbgStartPos, right->dbgEndPos);
 	}
 	return root;
 }
@@ -329,7 +330,7 @@ Parser::Result Parser::comparison(){
 		Result right = bitshift();
 		EXIT_IF_FAILED(right);
 
-		root = std::make_shared<Binary>(op, root, right);
+		root = std::make_shared<Binary>(op, root, right, left->dbgStartPos, right->dbgEndPos);
 	}
 	return root;
 }
@@ -344,7 +345,7 @@ Parser::Result Parser::bitshift(){
 		Result right = term();
 		EXIT_IF_FAILED(right);
 
-		root = std::make_shared<Binary>(op, root, right);
+		root = std::make_shared<Binary>(op, root, right, left->dbgStartPos, right->dbgEndPos);
 	}
 	return root;
 }
@@ -359,7 +360,7 @@ Parser::Result Parser::term(){
 		Result right = factor();
 		EXIT_IF_FAILED(right);
 
-		root = std::make_shared<Binary>(op, root, right);
+		root = std::make_shared<Binary>(op, root, right, left->dbgStartPos, right->dbgEndPos);
 	}
 	return root;
 }
@@ -374,18 +375,19 @@ Parser::Result Parser::factor(){
 		Result right = unary();
 		EXIT_IF_FAILED(right);
 
-		root = std::make_shared<Binary>(op, root, right);
+		root = std::make_shared<Binary>(op, root, right, left->dbgStartPos, right->dbgEndPos);
 	}
 	return root;
 }
 
 Parser::Result Parser::unary(){
+	const long position = _position;
 	if(match({Operator::BitNot, Operator::BoolNot, Operator::Plus, Operator::Minus})){
 		const Operator op = previousOp();
 		Result right = unary();
 		EXIT_IF_FAILED(right);
 
-		return Expression::Ptr(new Unary(op, right));
+		return Expression::Ptr(new Unary(op, right, position, right->dbgEndPos));
 	}
 
 	return power();
@@ -400,7 +402,7 @@ Parser::Result Parser::power(){
 		Result right = member();
 		EXIT_IF_FAILED(right);
 
-		root = std::make_shared<Binary>(Operator::Power, root, right);
+		root = std::make_shared<Binary>(Operator::Power, root, right, left->dbgStartPos, right->dbgEndPos);
 	}
 	return root;
 }
@@ -419,8 +421,9 @@ Parser::Result Parser::member(){
 		if(member.type != Token::Type::Identifier){
 			EXIT("Expected accessor");
 		}
+		const long position = _position;
 		advance();
-		root = std::make_shared<Member>(root, member.sVal);
+		root = std::make_shared<Member>(root, member.sVal, position);
 	}
 	return root;
 }
@@ -431,14 +434,15 @@ Parser::Result Parser::terminal(){
 	}
 
 	const Token& current = peek();
+	const long position = _position;
 	if(current.type == Token::Type::Float){
 		advance();
-		return Expression::Ptr(new Literal(Value(current.fVal)));
+		return Expression::Ptr(new Literal(Value(current.fVal), position));
 	}
 	if(current.type == Token::Type::Integer){
 		advance();
 		// For now, just store as float.
-		return Expression::Ptr(new Literal(Value(current.iVal)));
+		return Expression::Ptr(new Literal(Value(current.iVal), position));
 	}
 	if(current.type == Token::Type::Identifier){
 		advance();
@@ -446,7 +450,7 @@ Parser::Result Parser::terminal(){
 		if(match(Operator::OpenParenth)){
 			if(match(Operator::CloseParenth)){
 				// No arguments.
-				return Expression::Ptr(new FunctionCall(current.sVal, {}));
+				return Expression::Ptr(new FunctionCall(current.sVal, {}, position, position));
 			}
 
 			// Else parse arguments
@@ -457,16 +461,18 @@ Parser::Result Parser::terminal(){
 				arguments.push_back(arg);
 			} while(match(Operator::Comma));
 
+			const long endPosition = _position;
 			if(!match(Operator::CloseParenth)){
 				EXIT("Unexpected character, expected parenthesis");
 			}
-			return Expression::Ptr(new FunctionCall(current.sVal, arguments));
+
+			return Expression::Ptr(new FunctionCall(current.sVal, arguments, position, endPosition));
 		} else {
 			// Simple variable.
 			if(_parsingFunctionDeclaration){
-				return Expression::Ptr(new FunctionVar(current.sVal));
+				return Expression::Ptr(new FunctionVar(current.sVal, position));
 			} else {
-				return Expression::Ptr(new Variable(current.sVal));
+				return Expression::Ptr(new Variable(current.sVal, position));
 			}
 		}
 	}

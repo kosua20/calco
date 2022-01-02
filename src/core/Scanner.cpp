@@ -144,16 +144,16 @@ Status Scanner::scan(){
 					_tokens.emplace_back();
 					_tokens.back().type = Token::Type::Float;
 					_tokens.back().fVal = val;
-					_tokens.back().dbgStartPos = startPosition;
-					_tokens.back().dbgEndPos = position;
+					_tokens.back().location = startPosition;
+					_tokens.back().size = tokenSize;
 				} else {
 					const long long val = std::stoll(number, nullptr, base);
 					// Only emplace once the conversion has succeeded.
 					_tokens.emplace_back();
 					_tokens.back().type = Token::Type::Integer;
 					_tokens.back().iVal = val;
-					_tokens.back().dbgStartPos = startPosition;
-					_tokens.back().dbgEndPos = position;
+					_tokens.back().location = startPosition;
+					_tokens.back().size = tokenSize;
 				}
 			} catch(...) {
 				firstErrorPosition = startPosition;
@@ -174,12 +174,13 @@ Status Scanner::scan(){
 			while(isIdentifierCharAt(position) || isDeciDigitAt(position)){
 				++position;
 			}
-			const std::string identifier = _input.substr(startPosition, position - startPosition);
+			const size_t tokenSize = position - startPosition;
+			const std::string identifier = _input.substr(startPosition, tokenSize);
 			const std::string lowIdentifier = TextUtilities::lowercase(identifier);
 
 			_tokens.emplace_back();
-			_tokens.back().dbgStartPos = startPosition;
-			_tokens.back().dbgEndPos = position;
+			_tokens.back().location = startPosition;
+			_tokens.back().size = tokenSize;
 
 			// Special case: constant name.
 			if(MathConstants.count(lowIdentifier) != 0){
@@ -332,8 +333,8 @@ Status Scanner::scan(){
 			_tokens.emplace_back();
 			_tokens.back().type = Token::Type::Operator;
 			_tokens.back().opVal = opType;
-			_tokens.back().dbgStartPos = startPosition;
-			_tokens.back().dbgEndPos = startPosition + opSize;
+			_tokens.back().location = startPosition;
+			_tokens.back().size = opSize;
 			position += opSize;
 			continue;
 		}

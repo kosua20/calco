@@ -137,19 +137,24 @@ class Expression {
 
 public:
 
+	Expression(long _start, long _end) : dbgStartPos(_start), dbgEndPos(_end) {}
+
 	virtual Value evaluate(TreeVisitor& visitor) = 0;
 
 	Status evaluate(TreeVisitor& visitor, Value& outValue);
 
 	using Ptr = std::shared_ptr<Expression>;
 
+	const long dbgStartPos;
+	const long dbgEndPos;
 	
 };
 
 class Unary final : public Expression {
 public:
 
-	Unary(Operator _op, const Expression::Ptr& _exp) : op(_op), exp(_exp) {}
+	Unary(Operator _op, const Expression::Ptr& _exp, long _start, long _end)
+		: Expression(_start, _end), op(_op), exp(_exp) {}
 
 	Value evaluate(TreeVisitor& visitor) override;
 
@@ -160,7 +165,8 @@ public:
 class Binary final : public Expression {
 public:
 
-	Binary(Operator _op, const Expression::Ptr& _left, const Expression::Ptr& _right) : op(_op), left(_left), right(_right) {}
+	Binary(Operator _op, const Expression::Ptr& _left, const Expression::Ptr& _right, long _start, long _end)
+		: Expression(_start, _end), op(_op), left(_left), right(_right) {}
 
 	Value evaluate(TreeVisitor& visitor) override;
 
@@ -172,7 +178,8 @@ public:
 class Ternary final : public Expression {
 public:
 
-	Ternary(const Expression::Ptr& _condition, const Expression::Ptr& _pass, const Expression::Ptr& _fail) : condition(_condition), pass(_pass), fail(_fail) {}
+	Ternary(const Expression::Ptr& _condition, const Expression::Ptr& _pass, const Expression::Ptr& _fail, long _start, long _end)
+		: Expression(_start, _end), condition(_condition), pass(_pass), fail(_fail) {}
 
 	Value evaluate(TreeVisitor& visitor) override;
 
@@ -184,7 +191,8 @@ public:
 class Member final : public Expression {
 public:
 
-	Member(const Expression::Ptr& _parent, const std::string& _member) : parent(_parent), member(_member) {}
+	Member(const Expression::Ptr& _parent, const std::string& _member, long _start)
+		: Expression(_start, _start), parent(_parent), member(_member) {}
 
 	Value evaluate(TreeVisitor& visitor) override;
 
@@ -195,7 +203,8 @@ public:
 class Literal final : public Expression {
 public:
 
-	Literal(const Value& _val) : val(_val){}
+	Literal(const Value& _val, long _start)
+		: Expression(_start, _start), val(_val){}
 
 	Value evaluate(TreeVisitor& visitor) override;
 
@@ -205,7 +214,8 @@ public:
 class Variable final : public Expression {
 public:
 
-	Variable(const std::string& _name) : name(_name){}
+	Variable(const std::string& _name, long _start)
+		: Expression(_start, _start), name(_name){}
 
 	Value evaluate(TreeVisitor& visitor) override;
 
@@ -216,7 +226,8 @@ public:
 class VariableDef final : public Expression {
 public:
 
-	VariableDef(const std::string& _name, const Expression::Ptr& _expr) : name(_name), expr(_expr) {}
+	VariableDef(const std::string& _name, const Expression::Ptr& _expr, long _start)
+		: Expression(_start, _start), name(_name), expr(_expr) {}
 
 	Value evaluate(TreeVisitor& visitor) override;
 
@@ -227,7 +238,8 @@ public:
 class FunctionDef final : public Expression {
 public:
 
-	FunctionDef(const std::string& _name, const std::vector<std::string>& _args, const Expression::Ptr& _expr) : name(_name), args(_args), expr(_expr) {}
+	FunctionDef(const std::string& _name, const std::vector<std::string>& _args, const Expression::Ptr& _expr, long _start)
+		: Expression(_start, _start), name(_name), args(_args), expr(_expr) {}
 
 	Value evaluate(TreeVisitor& visitor) override;
 
@@ -240,7 +252,8 @@ public:
 class FunctionVar final : public Expression {
 public:
 
-	FunctionVar(const std::string& _name) : name(_name){}
+	FunctionVar(const std::string& _name, long _start)
+		: Expression(_start, _start), name(_name){}
 
 	Value evaluate(TreeVisitor& visitor) override;
 
@@ -269,7 +282,8 @@ private:
 class FunctionCall final : public Expression {
 public:
 
-	FunctionCall(const std::string& _name, const std::vector<Expression::Ptr>& _args) : name(_name), args(_args) {}
+	FunctionCall(const std::string& _name, const std::vector<Expression::Ptr>& _args, long _start, long _end)
+		: Expression(_start, _end), name(_name), args(_args) {}
 
 	Value evaluate(TreeVisitor& visitor) override;
 

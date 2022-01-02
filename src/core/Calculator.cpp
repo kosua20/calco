@@ -4,11 +4,17 @@
 #include "core/Evaluator.hpp"
 #include "core/system/TextUtilities.hpp"
 
-std::string generateErrorLocationMessage(const std::string& input, int start, int end){
+std::string generateErrorLocationMessage(const std::string& input, int start, int size){
 	const std::string errorPointerPadding = (start != 0) ? std::string(start, ' ') : "";
-	const std::string errorPointer = std::string(end - start + 1, '^');
+	std::string errorPointer = "^";
+	if(size > 2){
+		errorPointer.append(std::string(size-2, '-'));
+	}
+	if(size > 1){
+		errorPointer.append("^");
+	}
 
-	std::string errorMessage = "around position " + std::to_string(start);
+	std::string errorMessage;// = "around position " + std::to_string(start);
 	errorMessage.append("\n\t");
 	errorMessage.append(input);
 	errorMessage.append("\n\t");
@@ -30,7 +36,7 @@ bool Calculator::evaluate(const std::string& input, std::string& output, std::ve
 	if(!scanResult){
 		// Point to the problematic character.
 		const long characterPos = scanResult.location;
-		const std::string errorMsg = generateErrorLocationMessage(cleanInput, characterPos, characterPos);
+		const std::string errorMsg = generateErrorLocationMessage(cleanInput, characterPos, 1);
 		output = "Parsing: " + scanResult.message + " " + errorMsg;
 		return false;
 	}
@@ -42,13 +48,13 @@ bool Calculator::evaluate(const std::string& input, std::string& output, std::ve
 		output = "Compilation: " + parseResult.message + " ";
 		if(parseResult.location < int(scanner.tokens().size())){
 			const Token& errorToken = scanner.tokens()[parseResult.location];
-			const std::string errorMsg = generateErrorLocationMessage(cleanInput, errorToken.dbgStartPos, errorToken.dbgEndPos);
+			const std::string errorMsg = generateErrorLocationMessage(cleanInput, errorToken.location, errorToken.size);
 			output.append(errorMsg);
 
 		} else {
 			// Handle end-of-line errors.
 			const Token& lastToken = scanner.tokens().back();
-			const std::string errorMsg = generateErrorLocationMessage(cleanInput, lastToken.dbgEndPos, lastToken.dbgEndPos);
+			const std::string errorMsg = generateErrorLocationMessage(cleanInput, lastToken.size, lastToken.size);
 			output.append(errorMsg);
 		}
 		return false;
@@ -59,13 +65,14 @@ bool Calculator::evaluate(const std::string& input, std::string& output, std::ve
 	const size_t tokenCount = tokens.size();
 	infos.resize(tokenCount);
 
+	/// TODO: cleanup syntax generation and API (duplicate enum in the app,...).
 	for(size_t tid = 0; tid < tokenCount; ++tid){
 
 		const Token& token = tokens[tid];
 		switch(token.type){
 			case Token::Type::Operator:
 			{
-				const bool isSeparator = token.opVal == Operator::OpenParenth || token.opVal == Operator::CloseParenth || token.opVal == Operator::Comma;
+				const bool isSeparator = token.opVal == Operator::OpenParenth || token.opVal == Operator::CloseParenth || token.opVal == Operator::Comma || token.opVal == Operator::Dot;
 				infos[tid].type = isSeparator ? SemanticInfo::Type::SEPARATOR : SemanticInfo::Type::OPERATOR;
 				break;
 			}
@@ -84,8 +91,8 @@ bool Calculator::evaluate(const std::string& input, std::string& output, std::ve
 				infos[tid].type = SemanticInfo::Type::LITERAL;
 			break;
 		}
-		infos[tid].location = token.dbgStartPos;
-		infos[tid].size = token.dbgEndPos - token.dbgStartPos;
+		infos[tid].location = token.location;
+		infos[tid].size = token.size;
 	}
 
 	// Three possible cases:
@@ -105,9 +112,18 @@ bool Calculator::evaluate(const std::string& input, std::string& output, std::ve
 			_globals.setVar(varDef->name, outValue);
 			output = varDef->name + " = " + outValue.toString(evaluator.getFormat());
 			return true;
+
 		} else {
-			//const Expression* failExp = evaluator.getErrorExpression();
-			output = "Evaluation error: " + evalResult.message;
+			output = "Evaluation: " + evalResult.message + " ";
+
+			const Expression* failExp = evaluator.getErrorExpression();
+			if(failExp){
+				const Token& firstToken = tokens[failExp->dbgStartPos];
+				const Token& lastToken = tokens[failExp->dbgEndPos];
+				const long finalSize = lastToken.location - firstToken.location + lastToken.size;
+				const std::string errorMsg = generateErrorLocationMessage(cleanInput, firstToken.location, finalSize);
+				output.append(errorMsg);
+			}
 			return false;
 		}
 
@@ -131,9 +147,18 @@ bool Calculator::evaluate(const std::string& input, std::string& output, std::ve
 			_globals.setFunc(funDef->name, funDef);
 			output = funDef->name + " defined";
 			++_funcCounter;
+
 		} else {
-			//const Expression* failExp = flattener.getErrorExpression();
-			output = "Evaluation error: " + evalResult.message;
+			output = "Evaluation: " + evalResult.message + " ";
+
+			const Expression* failExp = flattener.getErrorExpression();
+			if(failExp){
+				const Token& firstToken = tokens[failExp->dbgStartPos];
+				const Token& lastToken = tokens[failExp->dbgEndPos];
+				const long finalSize = lastToken.location - firstToken.location + lastToken.size;
+				const std::string errorMsg = generateErrorLocationMessage(cleanInput, firstToken.location, finalSize);
+				output.append(errorMsg);
+			}
 			return false;
 		}
 
@@ -145,10 +170,20 @@ bool Calculator::evaluate(const std::string& input, std::string& output, std::ve
 		if(evalResult.success){
 			output = "= " + outValue.toString(evaluator.getFormat());
 			return true;
+
 		} else {
-			//const Expression* failExp = evaluator.getErrorExpression();
-			output = "Evaluation error: " + evalResult.message;
+			output = "Evaluation: " + evalResult.message + " ";
+
+			const Expression* failExp = evaluator.getErrorExpression();
+			if(failExp){
+				const Token& firstToken = tokens[failExp->dbgStartPos];
+				const Token& lastToken = tokens[failExp->dbgEndPos];
+				const long finalSize = lastToken.location - firstToken.location + lastToken.size;
+				const std::string errorMsg = generateErrorLocationMessage(cleanInput, firstToken.location, finalSize);
+				output.append(errorMsg);
+			}
 			return false;
+
 		}
 
 	}
