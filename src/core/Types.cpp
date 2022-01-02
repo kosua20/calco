@@ -1,7 +1,7 @@
 #include "core/Types.hpp"
 
-std::string Value::toString(Format format) const {
-	/// TODO: for matrices, avoid the shift because of an extra = on the first line. Allow optional padding character ? always use \t ?
+std::string Value::toString(Format format, const std::string& multiLinesPrefix) const {
+	
 	switch (type) {
 		case BOOL:
 			return b ? "true" : "false";
@@ -76,7 +76,7 @@ std::string Value::toString(Format format) const {
 				}
 				ms.append(" |");
 				if(cid < 2){
-					ms.append("\n");
+					ms.append("\n" + multiLinesPrefix);
 				}
 			}
 			return ms;
@@ -94,7 +94,7 @@ std::string Value::toString(Format format) const {
 				}
 				ms.append(" |");
 				if(cid < 3){
-					ms.append("\n");
+					ms.append("\n" + multiLinesPrefix);
 				}
 			}
 			return ms;

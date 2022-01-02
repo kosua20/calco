@@ -110,7 +110,10 @@ bool Calculator::evaluate(const std::string& input, std::string& output, std::ve
 		if(evalResult.success){
 			// Store result in global scope.
 			_globals.setVar(varDef->name, outValue);
-			output = varDef->name + " = " + outValue.toString(evaluator.getFormat());
+			_globals.setVar("ans", outValue);
+			output = varDef->name + " = ";
+			const std::string padLines(output.size(), ' ');
+			output += outValue.toString(evaluator.getFormat(), padLines);
 			return true;
 
 		} else {
@@ -168,7 +171,9 @@ bool Calculator::evaluate(const std::string& input, std::string& output, std::ve
 		const Status evalResult = parser.tree()->evaluate(evaluator, outValue);
 
 		if(evalResult.success){
-			output = "= " + outValue.toString(evaluator.getFormat());
+			// Update ans variable with the last result.
+			_globals.setVar("ans", outValue);
+			output = "= " + outValue.toString(evaluator.getFormat(), "  ");
 			return true;
 
 		} else {

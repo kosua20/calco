@@ -70,7 +70,7 @@ struct Value {
 
 	bool convert(const Type& target, Value& outVal) const;
 
-	std::string toString(Format format) const;
+	std::string toString(Format format, const std::string& multiLinePrefix = "") const;
 
 
 	Type type;
