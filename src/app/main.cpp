@@ -46,6 +46,7 @@ struct UIStyle {
 	ImFont* textFont = nullptr;
 	ImVec4 lineColors[UILine::COUNT];
 	ImVec4 wordColors[Calculator::Word::COUNT];
+	bool displayRowMajor = true;
 };
 
 struct UIState {
@@ -264,7 +265,7 @@ int main(int, char** ){
 	};
 
 	/// TODO: save/restore calculator state (save all internal state + formatted output)
-	///
+
 	while(!glfwWindowShouldClose(window)) {
 
 		glfwPollEvents();
@@ -284,11 +285,14 @@ int main(int, char** ){
 
 			if(ImGui::BeginMenu("File")){
 
-				/// TODO: extra settings for styling
-
-				if(ImGui::MenuItem("Settings")){
-
+				if(ImGui::BeginMenu("Settings")){
+					ImGui::Checkbox("Row major matrix display", &style.displayRowMajor);
+					if(ImGui::Button("Configure colors...")){
+						/// TODO: extra settings for styling
+					}
+					ImGui::EndMenu();
 				}
+
 				ImGui::Separator();
 
 				if(ImGui::MenuItem("Clear...")){
@@ -343,20 +347,7 @@ int main(int, char** ){
 						if(wid == 0 && line.type == UILine::OUTPUT){
 							ImGui::PushID(lid);
 							if(ImGui::Selectable(word.text.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)){
-								const std::string::size_type assignPos = line.fullText.find('=');
-								std::string output;
-								if(assignPos == std::string::npos){
-									// This is a function, output only the function identifier
-									output = line.fullText.substr(0, line.fullText.find(' '));
-								} else {
-									// For computations and variables, grab everything after the = sign
-									output = line.fullText.substr(assignPos+1);
-								}
-								output = TextUtilities::trim(output, " \t\r\n=");
-								TextUtilities::replace(output, " ", "");
-								TextUtilities::replace(output, "\n", "");
-								TextUtilities::replace(output, "\r", "");
-								updateFieldAndClipboard(output);
+								updateFieldAndClipboard(line.fullText);
 							}
 							ImGui::PopID();
 						} else {
@@ -420,15 +411,17 @@ int main(int, char** ){
 			if(ImGui::InputText("##Input", buffer, 1024, inputTextFlags, &textCallback, &state)){
 				std::string newLine(buffer);
 				buffer[0] = '\0';
+
 				if(!newLine.empty()){
 					state.commands.push_back(newLine);
 					state.historyPos = -1;
 					state.savedPartialCommand = "";
 					state.savedCursor = 0;
 
-					std::string resultLine;
+					Value result;
+					Format format;
 					std::vector<Calculator::Word> wordInfos;
-					const bool success = calculator.evaluate(newLine, resultLine, wordInfos);
+					const bool success = calculator.evaluate(newLine, result, wordInfos, format);
 
 					// Input line, with syntax highlighted words.
 					UILine& line = state.lines.emplace_back(UILine::INPUT, newLine);
@@ -439,9 +432,28 @@ int main(int, char** ){
 					if(wordInfos.empty()){
 						line.words.emplace_back(newLine, Calculator::Word::LITERAL);
 					}
+
 					// Output/error line
-					state.lines.emplace_back( success ? UILine::OUTPUT : UILine::ERROR, resultLine);
-					state.lines.back().words.emplace_back(resultLine, Calculator::Word::LITERAL);
+					if(!success){
+						// Error line: passthrough the error message from the calculator.
+						state.lines.emplace_back( UILine::ERROR, result.str);
+						state.lines.back().words.emplace_back(result.str, Calculator::Word::LITERAL);
+
+					} else if(result.type == Value::Type::STRING){
+						// This is 'function definition' specific.
+						state.lines.emplace_back( UILine::OUTPUT, result.str.substr(0, result.str.find(' ')));
+						state.lines.back().words.emplace_back(result.str, Calculator::Word::LITERAL);
+
+					} else {
+						// Used for copy/paste.
+						const std::string internalStr = result.toString(Format::INTERNAL);
+						// Build final display format.
+						const Format tgtFormat = Format((format & Format::BASE_MASK) | (style.displayRowMajor ? Format::MAJOR_ROW_FLAG : Format::MAJOR_COL_FLAG));
+						const std::string externalStr = "= " + result.toString(tgtFormat, "  ");
+						state.lines.emplace_back( UILine::OUTPUT, internalStr);
+						state.lines.back().words.emplace_back(externalStr, Calculator::Word::LITERAL);
+					}
+
 				}
 				shouldFocusTextField = true;
 			}
