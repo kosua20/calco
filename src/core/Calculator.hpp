@@ -15,7 +15,7 @@ public:
 		long size;
 	};
 
-	bool evaluate(const std::string& input, std::string& output, std::vector<Word>& info);
+	bool evaluate(const std::string& input, Value& output, std::vector<Word>& info, Format& format);
 
 private:
 

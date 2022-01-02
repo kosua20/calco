@@ -28,8 +28,10 @@ std::string logTree(const Expression::Ptr& exp ){
 	return finalStr.str;
 }
 
-bool Calculator::evaluate(const std::string& input, std::string& output, std::vector<Word>& infos){
+bool Calculator::evaluate(const std::string& input, Value& output, std::vector<Word>& infos, Format& format){
 	const std::string& cleanInput = input;
+	format = Format(Format::BASE_10_FLAG | Format::MAJOR_COL_FLAG);
+
 	// Scanning
 	Scanner scanner(cleanInput);
 	const Status scanResult = scanner.scan();
@@ -49,13 +51,13 @@ bool Calculator::evaluate(const std::string& input, std::string& output, std::ve
 		if(parseResult.location < int(scanner.tokens().size())){
 			const Token& errorToken = scanner.tokens()[parseResult.location];
 			const std::string errorMsg = generateErrorLocationMessage(cleanInput, errorToken.location, errorToken.size);
-			output.append(errorMsg);
+			output.str.append(errorMsg);
 
 		} else {
 			// Handle end-of-line errors.
 			const Token& lastToken = scanner.tokens().back();
 			const std::string errorMsg = generateErrorLocationMessage(cleanInput, lastToken.size, lastToken.size);
-			output.append(errorMsg);
+			output.str.append(errorMsg);
 		}
 		return false;
 	}
@@ -111,12 +113,11 @@ bool Calculator::evaluate(const std::string& input, std::string& output, std::ve
 		const Status evalResult = varDef->expr->evaluate(evaluator, outValue);
 
 		if(evalResult.success){
+			format = evaluator.getFormat();
 			// Store result in global scope.
 			_globals.setVar(varDef->name, outValue);
 			_globals.setVar("ans", outValue);
-			output = varDef->name + " = ";
-			const std::string padLines(output.size(), ' ');
-			output += outValue.toString(evaluator.getFormat(), padLines);
+			output = outValue;
 			return true;
 
 		} else {
@@ -128,7 +129,7 @@ bool Calculator::evaluate(const std::string& input, std::string& output, std::ve
 				const Token& lastToken = tokens[failExp->dbgEndPos];
 				const long finalSize = lastToken.location - firstToken.location + lastToken.size;
 				const std::string errorMsg = generateErrorLocationMessage(cleanInput, firstToken.location, finalSize);
-				output.append(errorMsg);
+				output.str.append(errorMsg);
 			}
 			return false;
 		}
@@ -163,7 +164,7 @@ bool Calculator::evaluate(const std::string& input, std::string& output, std::ve
 				const Token& lastToken = tokens[failExp->dbgEndPos];
 				const long finalSize = lastToken.location - firstToken.location + lastToken.size;
 				const std::string errorMsg = generateErrorLocationMessage(cleanInput, firstToken.location, finalSize);
-				output.append(errorMsg);
+				output.str.append(errorMsg);
 			}
 			return false;
 		}
@@ -174,9 +175,10 @@ bool Calculator::evaluate(const std::string& input, std::string& output, std::ve
 		const Status evalResult = parser.tree()->evaluate(evaluator, outValue);
 
 		if(evalResult.success){
+			format = evaluator.getFormat();
 			// Update ans variable with the last result.
 			_globals.setVar("ans", outValue);
-			output = "= " + outValue.toString(evaluator.getFormat(), "  ");
+			output = outValue;
 			return true;
 
 		} else {
@@ -188,7 +190,7 @@ bool Calculator::evaluate(const std::string& input, std::string& output, std::ve
 				const Token& lastToken = tokens[failExp->dbgEndPos];
 				const long finalSize = lastToken.location - firstToken.location + lastToken.size;
 				const std::string errorMsg = generateErrorLocationMessage(cleanInput, firstToken.location, finalSize);
-				output.append(errorMsg);
+				output.str.append(errorMsg);
 			}
 			return false;
 
