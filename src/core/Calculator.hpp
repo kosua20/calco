@@ -5,6 +5,7 @@
 class Calculator {
 public:
 
+	/// TODO: cleanup to avoid duplication in the app (add a few enum values? or a separate IN/OUT/ERROR?) 
 	struct SemanticInfo {
 		enum class Type {
 			LITERAL, VARIABLE, FUNCTION, OPERATOR, SEPARATOR

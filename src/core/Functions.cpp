@@ -11,6 +11,7 @@ bool Scope::hasVar(const std::string& name) const {
 }
 
 const Value& Scope::getVar(const std::string& name) const {
+	/// TODO: add support for ans
 	return _variables.at(name);
 }
 

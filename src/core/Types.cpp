@@ -1,6 +1,7 @@
 #include "core/Types.hpp"
 
 std::string Value::toString(Format format) const {
+	/// TODO: for matrices, avoid the shift because of an extra = on the first line. Allow optional padding character ? always use \t ?
 	switch (type) {
 		case BOOL:
 			return b ? "true" : "false";

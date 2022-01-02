@@ -153,6 +153,8 @@ GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 	colors[ImGuiCol_NavHighlight]           = ImVec4(0.05f, 0.61f, 0.73f, 1.00f);
 	colors[ImGuiCol_PopupBg]           		= ImVec4(0.15f, 0.15f, 0.15f, 0.94f);
 
+	/// TODO: custom styles
+	/// TODO: add background color
 	uiStyle.colors[UIStyle::Color::DEFAULT] = colors[ImGuiCol_Text];
 	uiStyle.colors[UIStyle::Color::OUTPUT] = ImVec4(0.9f, 0.95f, 1.0f, 1.0f);
 	uiStyle.colors[UIStyle::Color::ERROR] = ImVec4(0.8f, 0.2f, 0.1f, 1.0f);
@@ -233,6 +235,8 @@ int main(int, char** ){
 	char buffer[1024];
 	Calculator calculator;
 
+	/// TODO: save/restore calculator state (save all internal state + formatted output)
+
 	while(!glfwWindowShouldClose(window)) {
 
 		glfwPollEvents();
@@ -251,6 +255,8 @@ int main(int, char** ){
 		if(ImGui::BeginMainMenuBar()){
 
 			if(ImGui::BeginMenu("File")){
+
+				/// TODO: extra settings for styling
 
 				if(ImGui::MenuItem("Clear...")){
 					const int result = sr_gui_ask_choice("Calco", "Are you sure you want to clear?",
@@ -282,12 +288,16 @@ int main(int, char** ){
 			const float heightToReserve = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
 			ImGui::BeginChild("ScrollingRegion", ImVec2(0, -heightToReserve), false, ImGuiWindowFlags_HorizontalScrollbar);
 
+			/// TODO: make lines selectable and copy/pastable
+			/// TODO: double click to paste to input field
+
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1)); // Tighten spacing
 			ImGui::PushFont(style.consoleFont);
 
 			const size_t lineCount = state.lines.size();
 			for(size_t lid = 0; lid < lineCount; ++lid){
 
+				/// TODO: group each input+output with a tighter spacing
 				const auto& words = state.lines[lid].words;
 				bool first = true;
 				for(const auto& word : words){
@@ -302,6 +312,7 @@ int main(int, char** ){
 					}
 					ImGui::TextUnformatted(word.text.c_str());
 					if(word.pad){
+						/// TODO: support unary operator without space after if after another operator or beginning of line
 						ImGui::SameLine(0,0);
 						ImGui::TextUnformatted(" ");
 					}
@@ -365,8 +376,6 @@ int main(int, char** ){
 
 		}
 		ImGui::End();
-
-		//sr_gui_show_message("Calco", "Invalid operation", SR_GUI_MESSAGE_LEVEL_ERROR);
 
 		// Render the interface.
 		ImGui::Render();
