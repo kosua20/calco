@@ -498,7 +498,7 @@ Status Parser::parse(){
 	if(res != nullptr){
 		if( _position != _tokenCount){
 			// Error (unbalanced parenthesis,...)
-			return Status(_tokenCount, "Unbalanced expression");
+			return Status(_tokenCount, "Unable to parse expression");
 		}
 		_tree = res;
 		return Status(true);

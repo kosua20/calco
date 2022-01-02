@@ -66,7 +66,7 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 	const auto& tokens = scanner.tokens();
 	const size_t tokenCount = tokens.size();
 	infos.resize(tokenCount);
-
+	
 	// Classify each token.
 	for(size_t tid = 0; tid < tokenCount; ++tid){
 
@@ -152,7 +152,7 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 		if(evalResult.success){
 			// Store flattened function in global scope.
 			_globals.setFunc(funDef->name, funDef);
-			output = funDef->name + " defined";
+			output = funDef->name;
 			++_funcCounter;
 
 		} else {

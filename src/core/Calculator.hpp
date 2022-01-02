@@ -7,7 +7,7 @@ public:
 
 	struct Word {
 		enum Type {
-			LITERAL = 0, VARIABLE, FUNCTION, OPERATOR, SEPARATOR, COUNT
+			LITERAL = 0, VARIABLE, FUNCTION, OPERATOR, SEPARATOR, RESULT, COUNT
 		};
 
 		Type type;

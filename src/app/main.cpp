@@ -44,9 +44,14 @@ struct UIStyle {
 
 	ImFont* consoleFont = nullptr;
 	ImFont* textFont = nullptr;
-	ImVec4 lineColors[UILine::COUNT];
+	ImVec4 errorColor;
+	ImVec4 backgroundColor;
 	ImVec4 wordColors[Calculator::Word::COUNT];
 	bool displayRowMajor = true;
+
+	void applyBackgroundColor(){
+		ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = backgroundColor;
+	}
 };
 
 struct UIState {
@@ -161,15 +166,16 @@ GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 	colors[ImGuiCol_PopupBg]           		= ImVec4(0.15f, 0.15f, 0.15f, 0.94f);
 
 	/// TODO: custom styles
-	/// TODO: add background color
-	uiStyle.lineColors[UILine::INPUT] 				= colors[ImGuiCol_Text];
-	uiStyle.lineColors[UILine::OUTPUT] 				= ImVec4(0.9f, 0.95f, 1.0f, 1.0f);
-	uiStyle.lineColors[UILine::ERROR] 				= ImVec4(0.8f, 0.2f, 0.1f, 1.0f);
+	uiStyle.backgroundColor 						= ImVec4(0.137255f, 0.031373f, 0.105882f, 1.0f);
+	uiStyle.errorColor 								= ImVec4(0.8f, 0.2f, 0.1f, 1.0f);
 	uiStyle.wordColors[Calculator::Word::LITERAL] 	= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 	uiStyle.wordColors[Calculator::Word::VARIABLE] 	= ImVec4(0.258824f, 0.545098f, 0.000000f, 1.0f);
-	uiStyle.wordColors[Calculator::Word::FUNCTION] 	= ImVec4(0.135294f, 0.613725f, 0.956275f, 1.0f);
+	uiStyle.wordColors[Calculator::Word::FUNCTION] 	= ImVec4(0.635294f, 0.835294f, 0.113725f, 1.0f);
 	uiStyle.wordColors[Calculator::Word::OPERATOR] 	= ImVec4(0.713726f, 0.560784f, 0.000000f, 1.0f);
 	uiStyle.wordColors[Calculator::Word::SEPARATOR] = ImVec4(0.603922f, 0.415686f, 0.600000f, 1.0f);
+	uiStyle.wordColors[Calculator::Word::RESULT] 	= ImVec4(0.349020f, 0.556863f, 0.776471f, 1.0f);
+	uiStyle.applyBackgroundColor();
+
 	return window;
 }
 
@@ -242,6 +248,7 @@ int main(int, char** ){
 
 	sr_gui_init();
 
+	//char* defaultPath = std::getenv("CALCO_FILE");
 
 	int winW, winH;
 
@@ -329,39 +336,33 @@ int main(int, char** ){
 			ImGui::PushFont(style.consoleFont);
 
 			const size_t lineCount = state.lines.size();
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1));
 			for(size_t lid = 0; lid < lineCount; ++lid){
 				const UILine& line = state.lines[lid];
 				const size_t wordCount = line.words.size();
 
-				if(line.type == UILine::ERROR || line.type == UILine::OUTPUT){
-					ImGui::PushStyleColor(ImGuiCol_Text, style.lineColors[line.type]);
+				// Errors only have basic formatting.
+				if(line.type == UILine::ERROR ){
+					ImGui::PushStyleColor(ImGuiCol_Text, style.errorColor);
 
 					for(size_t wid = 0; wid < wordCount; ++wid){
 						// Pack words on the same line.
 						if(wid != 0){
 							ImGui::SameLine(0,0);
 						}
-
 						const UILine::UIWord& word = line.words[wid];
-
-						if(wid == 0 && line.type == UILine::OUTPUT){
-							ImGui::PushID(lid);
-							if(ImGui::Selectable(word.text.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)){
-								updateFieldAndClipboard(line.fullText);
-							}
-							ImGui::PopID();
-						} else {
-							ImGui::TextUnformatted(word.text.c_str());
-						}
+						ImGui::TextUnformatted(word.text.c_str());
 					}
 					ImGui::PopStyleColor();
 					continue;
 				}
 
-				// Tighten spacing for the next line (output/error)
-				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1));
+				// Put a space before any input for clarity.
+				if(line.type == UILine::INPUT){
+					ImGui::Dummy(ImVec2(5,12));
+				}
 
-				// Input lines are syntax highlighted.
+				// Input/output lines are syntax highlighted.
 				for(size_t wid = 0; wid < wordCount; ++wid){
 					// Pack words on the same line.
 					if(wid != 0){
@@ -371,7 +372,7 @@ int main(int, char** ){
 					const UILine::UIWord& word = line.words[wid];
 					ImGui::PushStyleColor(ImGuiCol_Text, style.wordColors[word.type]);
 
-					if(word.type == Calculator::Word::OPERATOR){
+					if(word.type == Calculator::Word::OPERATOR && wid != 0){
 						ImGui::TextUnformatted(" ");
 						ImGui::SameLine(0,0);
 					}
@@ -391,9 +392,8 @@ int main(int, char** ){
 					}
 					ImGui::PopStyleColor();
 				}
-
-				ImGui::PopStyleVar();
 			}
+			ImGui::PopStyleVar();
 
 			ImGui::PopFont();
 
@@ -441,17 +441,21 @@ int main(int, char** ){
 
 					} else if(result.type == Value::Type::STRING){
 						// This is 'function definition' specific.
-						state.lines.emplace_back( UILine::OUTPUT, result.str.substr(0, result.str.find(' ')));
-						state.lines.back().words.emplace_back(result.str, Calculator::Word::LITERAL);
+						state.lines.emplace_back( UILine::OUTPUT, result.str);
+						state.lines.back().words.emplace_back(result.str, Calculator::Word::FUNCTION);
+						state.lines.back().words.emplace_back(" defined", Calculator::Word::LITERAL);
 
 					} else {
 						// Used for copy/paste.
 						const std::string internalStr = result.toString(Format::INTERNAL);
+						state.lines.emplace_back( UILine::OUTPUT, internalStr);
+
 						// Build final display format.
 						const Format tgtFormat = Format((format & Format::BASE_MASK) | (style.displayRowMajor ? Format::MAJOR_ROW_FLAG : Format::MAJOR_COL_FLAG));
-						const std::string externalStr = "= " + result.toString(tgtFormat, "  ");
-						state.lines.emplace_back( UILine::OUTPUT, internalStr);
-						state.lines.back().words.emplace_back(externalStr, Calculator::Word::LITERAL);
+						const std::string externalStr = result.toString(tgtFormat, "  ");
+
+						state.lines.back().words.emplace_back("=", Calculator::Word::OPERATOR);
+						state.lines.back().words.emplace_back(externalStr, Calculator::Word::RESULT);
 					}
 
 				}
