@@ -40,61 +40,67 @@ std::string Value::toString(Format format, const std::string& multiLinesPrefix) 
 		case VEC3:
 		{
 			std::string ms;
-			ms.append("| ");
+			ms.append("vec3( ");
 			for(int cid = 0; cid < 3; ++cid){
 				ms.append(std::to_string(v3[cid]));
 				if(cid < 2){
 					ms.append(", ");
 				}
 			}
-			ms.append(" |");
+			ms.append(" )");
 			return ms;
 		}
 		case VEC4:
 		{
 			std::string ms;
-			ms.append("| ");
+			ms.append("vec4( ");
 			for(int cid = 0; cid < 4; ++cid){
 				ms.append(std::to_string(v4[cid]));
 				if(cid < 3){
 					ms.append(", ");
 				}
 			}
-			ms.append(" |");
+			ms.append(" )");
 			return ms;
 		}
 		case MAT3:
 		{
-			std::string ms;
+			std::string ms = "mat3( ";
+			// Column major access.
 			for(int cid = 0; cid < 3; ++cid){
-				ms.append("| ");
+
 				for(int cjd = 0; cjd < 3; ++cjd){
 					ms.append(std::to_string(m3[cid][cjd]));
 					if(cjd < 2){
 						ms.append(", ");
 					}
 				}
-				ms.append(" |");
+
 				if(cid < 2){
-					ms.append("\n" + multiLinesPrefix);
+					ms.append(",\n" + multiLinesPrefix + "      ");
+				} else {
+					ms.append(" )");
 				}
 			}
 			return ms;
 		}
 		case MAT4:
 		{
-			std::string ms;
+			std::string ms = "mat4( ";
+			// Column major access.
 			for(int cid = 0; cid < 4; ++cid){
-				ms.append("| ");
+
 				for(int cjd = 0; cjd < 4; ++cjd){
 					ms.append(std::to_string(m4[cid][cjd]));
 					if(cjd < 3){
 						ms.append(", ");
 					}
 				}
-				ms.append(" |");
+
 				if(cid < 3){
-					ms.append("\n" + multiLinesPrefix);
+					ms.append(",\n" + multiLinesPrefix + "      ");
+				} else {
+					ms.append(" )");
 				}
 			}
 			return ms;

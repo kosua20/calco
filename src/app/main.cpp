@@ -166,7 +166,7 @@ GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 	uiStyle.lineColors[UILine::ERROR] 				= ImVec4(0.8f, 0.2f, 0.1f, 1.0f);
 	uiStyle.wordColors[Calculator::Word::LITERAL] 	= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 	uiStyle.wordColors[Calculator::Word::VARIABLE] 	= ImVec4(0.258824f, 0.545098f, 0.000000f, 1.0f);
-	uiStyle.wordColors[Calculator::Word::FUNCTION] 	= ImVec4(0.886275f, 0.035294f, 0.113725f, 1.0f);
+	uiStyle.wordColors[Calculator::Word::FUNCTION] 	= ImVec4(0.135294f, 0.613725f, 0.956275f, 1.0f);
 	uiStyle.wordColors[Calculator::Word::OPERATOR] 	= ImVec4(0.713726f, 0.560784f, 0.000000f, 1.0f);
 	uiStyle.wordColors[Calculator::Word::SEPARATOR] = ImVec4(0.603922f, 0.415686f, 0.600000f, 1.0f);
 	return window;
@@ -352,7 +352,10 @@ int main(int, char** ){
 									// For computations and variables, grab everything after the = sign
 									output = line.fullText.substr(assignPos+1);
 								}
-								output = TextUtilities::trim(output, " =\t\n\r");
+								output = TextUtilities::trim(output, " \t\r\n=");
+								TextUtilities::replace(output, " ", "");
+								TextUtilities::replace(output, "\n", "");
+								TextUtilities::replace(output, "\r", "");
 								updateFieldAndClipboard(output);
 							}
 							ImGui::PopID();
