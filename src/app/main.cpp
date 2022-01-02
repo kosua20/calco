@@ -18,30 +18,32 @@
 #include "font_data_Inconsolata.h"
 #include "font_data_Lato.h"
 
-struct UIStyle {
-
-	enum Color {
-		DEFAULT = 0, OUTPUT, ERROR, LITERAL, VARIABLE, FUNCTION, OPERATOR, SEPARATOR, COUNT
-	};
-
-	ImFont* consoleFont = nullptr;
-	ImFont* textFont = nullptr;
-	ImVec4 colors[UIStyle::Color::COUNT];
-};
 
 struct UILine {
+	enum Type {
+		INPUT = 0, OUTPUT, ERROR, COUNT
+	};
+
+	UILine(Type _type) : type(_type){}
 
 	struct UIWord {
-
-		UIWord(const std::string& _text, UIStyle::Color _color, bool _pad = false) : text(_text), color(_color), pad(_pad) {}
-
+		UIWord(const std::string& _text, Calculator::Word::Type _type) : text(_text), type(_type) {}
 		std::string text;
-		UIStyle::Color color;
-		bool pad;
+		Calculator::Word::Type type;
 	};
 
 	std::vector<UIWord> words;
+	Type type;
 
+};
+
+
+struct UIStyle {
+
+	ImFont* consoleFont = nullptr;
+	ImFont* textFont = nullptr;
+	ImVec4 lineColors[UILine::COUNT];
+	ImVec4 wordColors[Calculator::Word::COUNT];
 };
 
 struct UIState {
@@ -155,14 +157,14 @@ GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 
 	/// TODO: custom styles
 	/// TODO: add background color
-	uiStyle.colors[UIStyle::Color::DEFAULT] = colors[ImGuiCol_Text];
-	uiStyle.colors[UIStyle::Color::OUTPUT] = ImVec4(0.9f, 0.95f, 1.0f, 1.0f);
-	uiStyle.colors[UIStyle::Color::ERROR] = ImVec4(0.8f, 0.2f, 0.1f, 1.0f);
-	uiStyle.colors[UIStyle::Color::LITERAL] = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-	uiStyle.colors[UIStyle::Color::VARIABLE] = ImVec4(0.258824f, 0.545098f, 0.000000f, 1.0f);
-	uiStyle.colors[UIStyle::Color::FUNCTION] = ImVec4(0.886275f, 0.035294f, 0.113725f, 1.0f);
-	uiStyle.colors[UIStyle::Color::OPERATOR] = ImVec4(0.713726f, 0.560784f, 0.000000f, 1.0f);
-	uiStyle.colors[UIStyle::Color::SEPARATOR] = ImVec4(0.603922f, 0.415686f, 0.600000f, 1.0f);
+	uiStyle.lineColors[UILine::INPUT] 				= colors[ImGuiCol_Text];
+	uiStyle.lineColors[UILine::OUTPUT] 				= ImVec4(0.9f, 0.95f, 1.0f, 1.0f);
+	uiStyle.lineColors[UILine::ERROR] 				= ImVec4(0.8f, 0.2f, 0.1f, 1.0f);
+	uiStyle.wordColors[Calculator::Word::LITERAL] 	= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+	uiStyle.wordColors[Calculator::Word::VARIABLE] 	= ImVec4(0.258824f, 0.545098f, 0.000000f, 1.0f);
+	uiStyle.wordColors[Calculator::Word::FUNCTION] 	= ImVec4(0.886275f, 0.035294f, 0.113725f, 1.0f);
+	uiStyle.wordColors[Calculator::Word::OPERATOR] 	= ImVec4(0.713726f, 0.560784f, 0.000000f, 1.0f);
+	uiStyle.wordColors[Calculator::Word::SEPARATOR] 	= ImVec4(0.603922f, 0.415686f, 0.600000f, 1.0f);
 	return window;
 }
 
@@ -291,38 +293,51 @@ int main(int, char** ){
 			/// TODO: make lines selectable and copy/pastable
 			/// TODO: double click to paste to input field
 
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1)); // Tighten spacing
 			ImGui::PushFont(style.consoleFont);
 
 			const size_t lineCount = state.lines.size();
 			for(size_t lid = 0; lid < lineCount; ++lid){
+				const UILine& line = state.lines[lid];
 
-				/// TODO: group each input+output with a tighter spacing
-				const auto& words = state.lines[lid].words;
-				bool first = true;
-				for(const auto& word : words){
-					if(!first){
+				if(line.type == UILine::ERROR || line.type == UILine::OUTPUT){
+					ImGui::PushStyleColor(ImGuiCol_Text, style.lineColors[line.type]);
+					for(const auto& word : line.words){
+						ImGui::TextUnformatted(word.text.c_str());
+					}
+					ImGui::PopStyleColor();
+					continue;
+				}
+
+				// Tighten spacing for the next line (output/error)
+				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1));
+
+				// Input lines are syntax highlighted.
+				const size_t wordCount = line.words.size();
+				for(size_t wid = 0; wid < wordCount; ++wid){
+					// Pack words on the same line.
+					if(wid != 0){
 						ImGui::SameLine(0,0);
 					}
-					first = false;
-					ImGui::PushStyleColor(ImGuiCol_Text, style.colors[word.color]);
-					if(word.pad){
+					const UILine::UIWord& word = line.words[wid];
+					ImGui::PushStyleColor(ImGuiCol_Text, style.wordColors[word.type]);
+
+					if(word.type == Calculator::Word::OPERATOR){
 						ImGui::TextUnformatted(" ");
 						ImGui::SameLine(0,0);
 					}
 					ImGui::TextUnformatted(word.text.c_str());
-					if(word.pad){
-						/// TODO: support unary operator without space after if after another operator or beginning of line
+					if(word.type == Calculator::Word::OPERATOR){
+
 						ImGui::SameLine(0,0);
 						ImGui::TextUnformatted(" ");
 					}
 					ImGui::PopStyleColor();
 				}
 
+				ImGui::PopStyleVar();
 			}
 
 			ImGui::PopFont();
-			ImGui::PopStyleVar();
 
 			// Autoscroll to bottom.
 			if(ImGui::GetScrollY() >= ImGui::GetScrollMaxY()){
@@ -346,24 +361,17 @@ int main(int, char** ){
 					state.savedCursor = 0;
 
 					std::string resultLine;
-					std::vector<Calculator::SemanticInfo> syntaxInfos;
-					const bool success = calculator.evaluate(newLine, resultLine, syntaxInfos);
+					std::vector<Calculator::Word> wordInfos;
+					const bool success = calculator.evaluate(newLine, resultLine, wordInfos);
 
-					UILine& line = state.lines.emplace_back();
-
-					static const std::unordered_map<Calculator::SemanticInfo::Type, UIStyle::Color> syntaxToColor = {
-						{ Calculator::SemanticInfo::Type::LITERAL, UIStyle::Color::LITERAL},
-						{ Calculator::SemanticInfo::Type::VARIABLE, UIStyle::Color::VARIABLE},
-						{ Calculator::SemanticInfo::Type::FUNCTION, UIStyle::Color::FUNCTION},
-						{ Calculator::SemanticInfo::Type::OPERATOR, UIStyle::Color::OPERATOR},
-						{ Calculator::SemanticInfo::Type::SEPARATOR, UIStyle::Color::SEPARATOR}
-					};
-
-					for(const auto& infos : syntaxInfos){
-						line.words.emplace_back(newLine.substr(infos.location, infos.size), syntaxToColor.at(infos.type), infos.type == Calculator::SemanticInfo::Type::OPERATOR);
+					// Input line, with syntax highlighted words.
+					UILine& line = state.lines.emplace_back(UILine::INPUT);
+					for(const Calculator::Word& word : wordInfos){
+						line.words.emplace_back(newLine.substr(word.location, word.size), word.type);
 					}
-					state.lines.emplace_back();
-					state.lines.back().words = { { resultLine, success ? UIStyle::Color::OUTPUT : UIStyle::Color::ERROR } };
+					// Output/error line
+					state.lines.emplace_back( success ? UILine::OUTPUT : UILine::ERROR);
+					state.lines.back().words.emplace_back(resultLine, Calculator::Word::LITERAL);
 				}
 				reclaimFocus = true;
 			}

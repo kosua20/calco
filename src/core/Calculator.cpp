@@ -28,7 +28,7 @@ std::string logTree(const Expression::Ptr& exp ){
 	return finalStr.str;
 }
 
-bool Calculator::evaluate(const std::string& input, std::string& output, std::vector<SemanticInfo>& infos){
+bool Calculator::evaluate(const std::string& input, std::string& output, std::vector<Word>& infos){
 	const std::string& cleanInput = input;
 	// Scanning
 	Scanner scanner(cleanInput);
@@ -65,30 +65,33 @@ bool Calculator::evaluate(const std::string& input, std::string& output, std::ve
 	const size_t tokenCount = tokens.size();
 	infos.resize(tokenCount);
 
-	/// TODO: cleanup syntax generation and API (duplicate enum in the app,...).
+	// Classify each token.
 	for(size_t tid = 0; tid < tokenCount; ++tid){
 
 		const Token& token = tokens[tid];
 		switch(token.type){
 			case Token::Type::Operator:
 			{
+				// Special cases: ( ) , . and unary (operator following an operator or at beginning of line)
 				const bool isSeparator = token.opVal == Operator::OpenParenth || token.opVal == Operator::CloseParenth || token.opVal == Operator::Comma || token.opVal == Operator::Dot;
-				infos[tid].type = isSeparator ? SemanticInfo::Type::SEPARATOR : SemanticInfo::Type::OPERATOR;
+				const bool followOperator = tid == 0 || tokens[tid-1].type == Token::Type::Operator;
+				infos[tid].type = (isSeparator || followOperator) ? Word::SEPARATOR : Word::OPERATOR;
 				break;
 			}
 			case Token::Type::Identifier:
 			{
+				// If followed by a parenthesis, function. Otherwise, variable.
 				if(tid + 1 < tokenCount && tokens[tid+1].type == Token::Type::Operator && tokens[tid+1].opVal == Operator::OpenParenth){
-					infos[tid].type =  SemanticInfo::Type::FUNCTION;
+					infos[tid].type =  Word::FUNCTION;
 				} else {
-					infos[tid].type =  SemanticInfo::Type::VARIABLE;
+					infos[tid].type =  Word::VARIABLE;
 				}
 				break;
 			}
 			case Token::Type::Float:
 			case Token::Type::Integer:
 			default:
-				infos[tid].type = SemanticInfo::Type::LITERAL;
+				infos[tid].type = Word::LITERAL;
 			break;
 		}
 		infos[tid].location = token.location;

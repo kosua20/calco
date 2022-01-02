@@ -5,10 +5,9 @@
 class Calculator {
 public:
 
-	/// TODO: cleanup to avoid duplication in the app (add a few enum values? or a separate IN/OUT/ERROR?) 
-	struct SemanticInfo {
-		enum class Type {
-			LITERAL, VARIABLE, FUNCTION, OPERATOR, SEPARATOR
+	struct Word {
+		enum Type {
+			LITERAL = 0, VARIABLE, FUNCTION, OPERATOR, SEPARATOR, COUNT
 		};
 
 		Type type;
@@ -16,7 +15,7 @@ public:
 		long size;
 	};
 
-	bool evaluate(const std::string& input, std::string& output, std::vector<SemanticInfo>& info);
+	bool evaluate(const std::string& input, std::string& output, std::vector<Word>& info);
 
 private:
 
