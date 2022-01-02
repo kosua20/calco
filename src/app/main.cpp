@@ -20,11 +20,12 @@
 
 
 struct UILine {
+
 	enum Type {
 		INPUT = 0, OUTPUT, ERROR, COUNT
 	};
 
-	UILine(Type _type) : type(_type){}
+	UILine(Type _type, const std::string& _full) : type(_type), fullText(_full) {}
 
 	struct UIWord {
 		UIWord(const std::string& _text, Calculator::Word::Type _type) : text(_text), type(_type) {}
@@ -32,8 +33,9 @@ struct UILine {
 		Calculator::Word::Type type;
 	};
 
-	std::vector<UIWord> words;
 	Type type;
+	std::vector<UIWord> words;
+	std::string fullText;
 
 };
 
@@ -52,6 +54,8 @@ struct UIState {
 	std::string savedPartialCommand;
 	int savedCursor = 0;
 	int historyPos = -1;
+	std::string textToInsert;
+	bool shouldInsert = false;
 };
 
 GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
@@ -138,9 +142,9 @@ GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 	colors[ImGuiCol_Button]                 = ImVec4(0.05f, 0.39f, 0.45f, 1.00f);
 	colors[ImGuiCol_ButtonHovered]          = ImVec4(0.05f, 0.61f, 0.73f, 1.00f);
 	colors[ImGuiCol_ButtonActive]           = ImVec4(0.03f, 0.69f, 0.82f, 1.00f);
-	colors[ImGuiCol_Header]                 = ImVec4(0.05f, 0.39f, 0.45f, 1.00f);
-	colors[ImGuiCol_HeaderHovered]          = ImVec4(0.05f, 0.61f, 0.73f, 1.00f);
-	colors[ImGuiCol_HeaderActive]           = ImVec4(0.03f, 0.69f, 0.82f, 1.00f);
+	colors[ImGuiCol_Header]                 = ImVec4(1.00f, 1.00f, 1.00F, 0.16f);
+	colors[ImGuiCol_HeaderHovered]          = ImVec4(1.00f, 1.00f, 1.00F, 0.16f);
+	colors[ImGuiCol_HeaderActive]           = ImVec4(1.00f, 1.00f, 1.00F, 0.28f);
 	colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.05f, 0.39f, 0.45f, 1.00f);
 	colors[ImGuiCol_SeparatorActive]        = ImVec4(0.05f, 0.61f, 0.73f, 1.00f);
 	colors[ImGuiCol_ResizeGrip]             = ImVec4(0.05f, 0.39f, 0.45f, 1.00f);
@@ -164,12 +168,20 @@ GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 	uiStyle.wordColors[Calculator::Word::VARIABLE] 	= ImVec4(0.258824f, 0.545098f, 0.000000f, 1.0f);
 	uiStyle.wordColors[Calculator::Word::FUNCTION] 	= ImVec4(0.886275f, 0.035294f, 0.113725f, 1.0f);
 	uiStyle.wordColors[Calculator::Word::OPERATOR] 	= ImVec4(0.713726f, 0.560784f, 0.000000f, 1.0f);
-	uiStyle.wordColors[Calculator::Word::SEPARATOR] 	= ImVec4(0.603922f, 0.415686f, 0.600000f, 1.0f);
+	uiStyle.wordColors[Calculator::Word::SEPARATOR] = ImVec4(0.603922f, 0.415686f, 0.600000f, 1.0f);
 	return window;
 }
 
 int textCallback(ImGuiInputTextCallbackData* data){
 	UIState& state = *((UIState*)(data->UserData));
+
+	// Insert extra text if requested.
+	if(state.shouldInsert){
+		data->InsertChars(data->CursorPos, state.textToInsert.c_str());
+		state.shouldInsert = false;
+		state.textToInsert = "";
+	}
+
 	switch (data->EventFlag) {
 		case ImGuiInputTextFlags_CallbackHistory:
 		{
@@ -235,10 +247,24 @@ int main(int, char** ){
 	const unsigned int winFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar;
 
 	char buffer[1024];
+	memset(buffer, '\0', sizeof(buffer));
+
 	Calculator calculator;
+	bool shouldFocusTextField = true;
+
+	auto updateFieldAndClipboard = [&state, &shouldFocusTextField](const std::string& newContent){
+		ImGui::SetClipboardText(newContent.c_str());
+		if (ImGui::IsMouseDoubleClicked(0)){
+			// Register text to insert, will be done in the text field conitnuous callback.
+			state.shouldInsert = true;
+			state.textToInsert = newContent;
+			shouldFocusTextField = true;
+		}
+
+	};
 
 	/// TODO: save/restore calculator state (save all internal state + formatted output)
-
+	///
 	while(!glfwWindowShouldClose(window)) {
 
 		glfwPollEvents();
@@ -260,6 +286,11 @@ int main(int, char** ){
 
 				/// TODO: extra settings for styling
 
+				if(ImGui::MenuItem("Settings")){
+
+				}
+				ImGui::Separator();
+
 				if(ImGui::MenuItem("Clear...")){
 					const int result = sr_gui_ask_choice("Calco", "Are you sure you want to clear?",
 														 SR_GUI_MESSAGE_LEVEL_WARN, "Yes", "No", "");
@@ -277,6 +308,7 @@ int main(int, char** ){
 
 			if(ImGui::BeginMenu("About")){
 				ImGui::Text( "Calco - © Simon Rodriguez 2021" );
+				ImGui::Text( "version 1.0.0" );
 				ImGui::EndMenu();
 			}
 			ImGui::EndMainMenuBar();
@@ -290,19 +322,43 @@ int main(int, char** ){
 			const float heightToReserve = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
 			ImGui::BeginChild("ScrollingRegion", ImVec2(0, -heightToReserve), false, ImGuiWindowFlags_HorizontalScrollbar);
 
-			/// TODO: make lines selectable and copy/pastable
-			/// TODO: double click to paste to input field
-
 			ImGui::PushFont(style.consoleFont);
 
 			const size_t lineCount = state.lines.size();
 			for(size_t lid = 0; lid < lineCount; ++lid){
 				const UILine& line = state.lines[lid];
+				const size_t wordCount = line.words.size();
 
 				if(line.type == UILine::ERROR || line.type == UILine::OUTPUT){
 					ImGui::PushStyleColor(ImGuiCol_Text, style.lineColors[line.type]);
-					for(const auto& word : line.words){
-						ImGui::TextUnformatted(word.text.c_str());
+
+					for(size_t wid = 0; wid < wordCount; ++wid){
+						// Pack words on the same line.
+						if(wid != 0){
+							ImGui::SameLine(0,0);
+						}
+
+						const UILine::UIWord& word = line.words[wid];
+
+						if(wid == 0 && line.type == UILine::OUTPUT){
+							ImGui::PushID(lid);
+							if(ImGui::Selectable(word.text.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)){
+								const std::string::size_type assignPos = line.fullText.find('=');
+								std::string output;
+								if(assignPos == std::string::npos){
+									// This is a function, output only the function identifier
+									output = line.fullText.substr(0, line.fullText.find(' '));
+								} else {
+									// For computations and variables, grab everything after the = sign
+									output = line.fullText.substr(assignPos+1);
+								}
+								output = TextUtilities::trim(output, " =\t\n\r");
+								updateFieldAndClipboard(output);
+							}
+							ImGui::PopID();
+						} else {
+							ImGui::TextUnformatted(word.text.c_str());
+						}
 					}
 					ImGui::PopStyleColor();
 					continue;
@@ -312,12 +368,12 @@ int main(int, char** ){
 				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1));
 
 				// Input lines are syntax highlighted.
-				const size_t wordCount = line.words.size();
 				for(size_t wid = 0; wid < wordCount; ++wid){
 					// Pack words on the same line.
 					if(wid != 0){
 						ImGui::SameLine(0,0);
 					}
+
 					const UILine::UIWord& word = line.words[wid];
 					ImGui::PushStyleColor(ImGuiCol_Text, style.wordColors[word.type]);
 
@@ -325,7 +381,15 @@ int main(int, char** ){
 						ImGui::TextUnformatted(" ");
 						ImGui::SameLine(0,0);
 					}
-					ImGui::TextUnformatted(word.text.c_str());
+					if(wid == 0){
+						ImGui::PushID(lid);
+						if(ImGui::Selectable(word.text.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)){
+							updateFieldAndClipboard(line.fullText);
+						}
+						ImGui::PopID();
+					} else {
+						ImGui::TextUnformatted(word.text.c_str());
+					}
 					if(word.type == Calculator::Word::OPERATOR){
 
 						ImGui::SameLine(0,0);
@@ -345,10 +409,9 @@ int main(int, char** ){
 			}
 			ImGui::EndChild();
 			ImGui::Separator();
-			// Input line.
 
-			bool reclaimFocus = false;
-			const ImGuiInputTextFlags inputTextFlags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory;
+			// Input line.
+			const ImGuiInputTextFlags inputTextFlags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackAlways;
 
 			ImGui::SetNextItemWidth(float(winW) - 2*ImGui::GetStyle().ItemSpacing.x);
 			if(ImGui::InputText("##Input", buffer, 1024, inputTextFlags, &textCallback, &state)){
@@ -365,25 +428,29 @@ int main(int, char** ){
 					const bool success = calculator.evaluate(newLine, resultLine, wordInfos);
 
 					// Input line, with syntax highlighted words.
-					UILine& line = state.lines.emplace_back(UILine::INPUT);
+					UILine& line = state.lines.emplace_back(UILine::INPUT, newLine);
 					for(const Calculator::Word& word : wordInfos){
 						line.words.emplace_back(newLine.substr(word.location, word.size), word.type);
 					}
+					// Handle error that happened before syntax info generation.
+					if(wordInfos.empty()){
+						line.words.emplace_back(newLine, Calculator::Word::LITERAL);
+					}
 					// Output/error line
-					state.lines.emplace_back( success ? UILine::OUTPUT : UILine::ERROR);
+					state.lines.emplace_back( success ? UILine::OUTPUT : UILine::ERROR, resultLine);
 					state.lines.back().words.emplace_back(resultLine, Calculator::Word::LITERAL);
 				}
-				reclaimFocus = true;
+				shouldFocusTextField = true;
 			}
-
 			// Auto-focus on window apparition
 			ImGui::SetItemDefaultFocus();
-			if(reclaimFocus){
+			if(shouldFocusTextField){
 				ImGui::SetKeyboardFocusHere(-1); // Auto focus previous widget
 			}
 
 		}
 		ImGui::End();
+		shouldFocusTextField = false;
 
 		// Render the interface.
 		ImGui::Render();
