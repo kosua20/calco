@@ -72,6 +72,10 @@ Value ExpLogger::process(const FunctionCall& exp)  {
 
 ExpEval::ExpEval(const Scope& scope, FunctionsLibrary& stdlib) : _globalScope(scope), _stdlib(stdlib) {}
 
+void ExpEval::setBase(Format format){
+	_format = Format((format & Format::BASE_MASK) | (_format & ~BASE_MASK));
+}
+
 Value ExpEval::uOpIdentity(const Value& v){
 	switch(v.type){
 		case Value::INTEGER:

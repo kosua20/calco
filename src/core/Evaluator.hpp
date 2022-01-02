@@ -33,7 +33,7 @@ public:
 	Value process(		FunctionVar& exp) override;
 	Value process(const FunctionCall& exp) override;
 
-	void setFormat(Format format){ _format = format; };
+	void setBase(Format format);
 	Format getFormat() const { return _format; }
 
 private:
@@ -69,7 +69,7 @@ private:
 	FunctionsLibrary& _stdlib;
 
 	std::stack<Scope> _localScopes;
-	Format _format = Format::DECIMAL;
+	Format _format = Format::INTERNAL;
 };
 
 class FuncSubstitution final : public TreeVisitor {

@@ -1,14 +1,16 @@
 #include "core/Types.hpp"
 
 std::string Value::toString(Format format, const std::string& multiLinesPrefix) const {
-	
+	const bool internal = format == Format::INTERNAL;
+	const bool rowMajor = (format & Format::MAJOR_MASK) == Format::MAJOR_ROW_FLAG;
+
 	switch (type) {
 		case BOOL:
-			return b ? "true" : "false";
+			return internal ? (b ? "1" : "0") : (b ? "true" : "false");
 		case INTEGER:
 		{
-			switch(format){
-				case Format::BINARY:
+			switch(format & Format::BASE_MASK){
+				case Format::BASE_2_FLAG:
 				{
 					const unsigned long long ai = std::abs(i);
 					const unsigned int bitCount = (unsigned int)((std::floor(std::log2(double(std::max(ai, 2ull))))) + 1);
@@ -18,19 +20,19 @@ std::string Value::toString(Format format, const std::string& multiLinesPrefix) 
 					}
 					return "0b" + out;
 				}
-				case Format::OCTAL:
+				case Format::BASE_8_FLAG:
 				{
 					char tmpBuffer[256];
 					snprintf(tmpBuffer, sizeof(tmpBuffer), "0o%llo", i);
 					return std::string(tmpBuffer);
 				}
-				case Format::HEXA:
+				case Format::BASE_16_FLAG:
 				{
 					char tmpBuffer[256];
 					snprintf(tmpBuffer, sizeof(tmpBuffer), "0x%llX", i);
 					return std::string(tmpBuffer);
 				}
-				case Format::DECIMAL:
+				case Format::BASE_10_FLAG:
 				default:
 					return std::to_string(i);
 			}
@@ -39,68 +41,68 @@ std::string Value::toString(Format format, const std::string& multiLinesPrefix) 
 			return std::to_string(f);
 		case VEC3:
 		{
-			std::string ms;
-			ms.append("vec3( ");
+			std::string ms = internal ? "vec3( " : "| ";
 			for(int cid = 0; cid < 3; ++cid){
 				ms.append(std::to_string(v3[cid]));
 				if(cid < 2){
 					ms.append(", ");
 				}
 			}
-			ms.append(" )");
+			ms.append(internal ? " )" : " |");
 			return ms;
 		}
 		case VEC4:
 		{
-			std::string ms;
-			ms.append("vec4( ");
+			std::string ms = internal ? "vec4( " : "| ";
 			for(int cid = 0; cid < 4; ++cid){
 				ms.append(std::to_string(v4[cid]));
 				if(cid < 3){
 					ms.append(", ");
 				}
 			}
-			ms.append(" )");
+			ms.append(internal ? " )" : " |");
 			return ms;
 		}
 		case MAT3:
 		{
-			std::string ms = "mat3( ";
+			std::string ms = internal ? "mat3( " : "| ";
 			// Column major access.
 			for(int cid = 0; cid < 3; ++cid){
 
 				for(int cjd = 0; cjd < 3; ++cjd){
-					ms.append(std::to_string(m3[cid][cjd]));
+					const float val = rowMajor ? m3[cjd][cid] : m3[cid][cjd];
+					ms.append(std::to_string(val));
 					if(cjd < 2){
 						ms.append(", ");
 					}
 				}
 
 				if(cid < 2){
-					ms.append(",\n" + multiLinesPrefix + "      ");
+					ms.append(internal ? ", " : (" |\n" + multiLinesPrefix + "| "));
 				} else {
-					ms.append(" )");
+					ms.append(internal ? " )" : " |");
 				}
 			}
 			return ms;
 		}
 		case MAT4:
 		{
-			std::string ms = "mat4( ";
+			std::string ms = internal ? "mat4( " : "| ";
 			// Column major access.
 			for(int cid = 0; cid < 4; ++cid){
 
 				for(int cjd = 0; cjd < 4; ++cjd){
-					ms.append(std::to_string(m4[cid][cjd]));
+					const float val = rowMajor ? m4[cjd][cid] : m4[cid][cjd];
+					ms.append(std::to_string(val));
 					if(cjd < 3){
 						ms.append(", ");
 					}
 				}
 
 				if(cid < 3){
-					ms.append(",\n" + multiLinesPrefix + "      ");
+					ms.append(internal ? ", " : (" |\n" + multiLinesPrefix + "| "));
 				} else {
-					ms.append(" )");
+					ms.append(internal ? " )" : " |");
 				}
 			}
 			return ms;
@@ -127,7 +129,7 @@ bool Value::convert(const Type& target, Value& outVal) const {
 
 	// String conversion is always possible.
 	if(target == Value::STRING){
-		outVal = toString(Format::DECIMAL);
+		outVal = toString(Format::INTERNAL);
 		return true;
 	}
 

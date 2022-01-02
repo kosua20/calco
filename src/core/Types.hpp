@@ -2,8 +2,21 @@
 #include "core/Common.hpp"
 #include <unordered_map>
 
-enum class Format {
-	BINARY, DECIMAL, OCTAL, HEXA
+enum Format : uint {
+	// Use 3 bits for flags
+	// | row(0) / column(1) | bin(00) / dec(11) / oct(01) / hex(10) |
+	// INTERNAL = mark 1 extra bit (4 bits total)
+	MAJOR_MASK = 0b001,
+	MAJOR_ROW_FLAG = 0b000,
+	MAJOR_COL_FLAG = 0b001, // so that INTERNAL & MAJOR_MASK is column major
+
+	BASE_MASK = 0b110,
+	BASE_2_FLAG = 0b000,
+	BASE_8_FLAG = 0b010,
+	BASE_16_FLAG = 0b100,
+	BASE_10_FLAG = 0b110, // so that INTERNAL & BASE_MASK is base 10
+
+	INTERNAL = 0b1111
 };
 
 enum class Operator {
@@ -71,7 +84,6 @@ struct Value {
 	bool convert(const Type& target, Value& outVal) const;
 
 	std::string toString(Format format, const std::string& multiLinePrefix = "") const;
-
 
 	Type type;
 	union {
