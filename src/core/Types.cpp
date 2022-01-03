@@ -13,10 +13,10 @@ std::string Value::toString(Format format, const std::string& multiLinesPrefix) 
 				case Format::BASE_2_FLAG:
 				{
 					const unsigned long long ai = std::abs(i);
-					const unsigned int bitCount = (unsigned int)((std::floor(std::log2(double(std::max(ai, 2ull))))) + 1);
+					const unsigned long long bitCount = (unsigned long long)((std::floor(std::log2(double(std::max(ai, 2ull))))) + 1);
 					std::string out(bitCount, '0');
-					for(unsigned int bid = 0; bid < bitCount; ++bid){
-						out[bitCount - bid - 1] = (ai & (1u << bid)) ? '1' : '0';
+					for(unsigned long long bid = 0; bid < bitCount; ++bid){
+						out[bitCount - bid - 1] = (ai & (1ull << bid)) ? '1' : '0';
 					}
 					return "0b" + out;
 				}
@@ -143,16 +143,16 @@ bool Value::convert(const Type& target, Value& outVal) const {
 					outVal = b ? 1.0 : 0.0;
 					return true;
 				case VEC3:
-					outVal = glm::vec3(double(i));
+					outVal = glm::vec3(b ? 1.0f : 0.0f);
 					return true;
 				case VEC4:
-					outVal = glm::vec4(double(i));
+					outVal = glm::vec4(b ? 1.0f : 0.0f);
 					return true;
 				case MAT3:
-					outVal = glm::mat3(double(i));
+					outVal = glm::mat3(b ? 1.0f : 0.0f);
 					return true;
 				case MAT4:
-					outVal = glm::mat4(double(i));
+					outVal = glm::mat4(b ? 1.0f : 0.0f);
 					return true;
 				default:
 					break;
@@ -167,16 +167,16 @@ bool Value::convert(const Type& target, Value& outVal) const {
 					outVal = double(i);
 					return true;
 				case VEC3:
-					outVal = glm::vec3(double(i));
+					outVal = glm::vec3(float(i));
 					return true;
 				case MAT3:
-					outVal = glm::mat3(double(i));
+					outVal = glm::mat3(float(i));
 					return true;
 				case VEC4:
-					outVal = glm::vec4(double(i));
+					outVal = glm::vec4(float(i));
 					return true;
 				case MAT4:
-					outVal = glm::mat4(double(i));
+					outVal = glm::mat4(float(i));
 					return true;
 				default:
 					break;
@@ -191,16 +191,16 @@ bool Value::convert(const Type& target, Value& outVal) const {
 					outVal = (long long)(f);
 					return true;
 				case VEC3:
-					outVal = glm::vec3(f);
+					outVal = glm::vec3(float(f));
 					return true;
 				case MAT3:
-					outVal = glm::mat3(f);
+					outVal = glm::mat3(float(f));
 					return true;
 				case VEC4:
-					outVal = glm::vec4(f);
+					outVal = glm::vec4(float(f));
 					return true;
 				case MAT4:
-					outVal = glm::mat4(f);
+					outVal = glm::mat4(float(f));
 					return true;
 				default:
 					break;

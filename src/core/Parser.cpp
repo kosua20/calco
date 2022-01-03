@@ -45,7 +45,7 @@
 #define EXIT_IF_FAILED(a) if(a == nullptr){ _failedToken = _failed ? _failedToken : _position; _failed = true; return nullptr;}
 #define EXIT(message) if(true){ if(!_failed){ _failedToken = _position; _failedMessage = message; _failed = true; };  return nullptr; }
 
-Parser::Parser(const std::vector<Token>& tokens) : _tokens(tokens), _tree(nullptr), _position(0), _tokenCount(tokens.size()) {
+Parser::Parser(const std::vector<Token>& tokens) : _tokens(tokens), _tree(nullptr), _position(0), _tokenCount(long(tokens.size())) {
 
 }
 

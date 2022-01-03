@@ -988,7 +988,7 @@ Value FunctionsLibrary::funcScalingMat(const std::vector<Value>& args, ExpEval& 
 	if(args[0].type == Value::VEC3){
 		return glm::scale(glm::mat4(1.0f), args[0].v3);
 	} else if(args[0].type == Value::FLOAT){
-		return glm::scale(glm::mat4(1.0f), glm::vec3(args[0].f));
+		return glm::scale(glm::mat4(1.0f), glm::vec3(float(args[0].f)));
 	}
 	EXIT("Unsupported type " + TypeString(args[0].type) + " for function " + name + ".");
 }
@@ -997,9 +997,9 @@ Value FunctionsLibrary::constructorVec3(const std::vector<Value>& args, ExpEval&
 	if(args.size() == 1){
 		switch (args[0].type) {
 			case Value::INTEGER:
-				return glm::vec3(double(args[0].i));
+				return glm::vec3(float(args[0].i));
 			case Value::FLOAT:
-				return glm::vec3(args[0].f);
+				return glm::vec3(float(args[0].f));
 			case Value::VEC3:
 				return args[0].v3;
 			case Value::VEC4:
@@ -1023,9 +1023,9 @@ Value FunctionsLibrary::constructorVec4(const std::vector<Value>& args, ExpEval&
 	if(args.size() == 1){
 		switch (args[0].type) {
 			case Value::INTEGER:
-				return glm::vec4(double(args[0].i));
+				return glm::vec4(float(args[0].i));
 			case Value::FLOAT:
-				return glm::vec4(args[0].f);
+				return glm::vec4(float(args[0].f));
 			case Value::VEC4:
 				return args[0].v4;
 			default:
@@ -1054,9 +1054,9 @@ Value FunctionsLibrary::constructorMat3(const std::vector<Value>& args, ExpEval&
 	if(args.size() == 1){
 		switch (args[0].type) {
 			case Value::INTEGER:
-				return glm::mat3(double(args[0].i));
+				return glm::mat3(float(args[0].i));
 			case Value::FLOAT:
-				return glm::mat3(args[0].f);
+				return glm::mat3(float(args[0].f));
 			case Value::MAT3:
 				return args[0].m3;
 			case Value::MAT4:
@@ -1093,9 +1093,9 @@ Value FunctionsLibrary::constructorMat4(const std::vector<Value>& args, ExpEval&
 	if(args.size() == 1){
 		switch (args[0].type) {
 			case Value::INTEGER:
-				return glm::mat4(double(args[0].i));
+				return glm::mat4(float(args[0].i));
 			case Value::FLOAT:
-				return glm::mat4(args[0].f);
+				return glm::mat4(float(args[0].f));
 			case Value::MAT3:
 				return glm::mat4(args[0].m3);
 			case Value::MAT4:

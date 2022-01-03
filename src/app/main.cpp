@@ -22,7 +22,7 @@
 struct UILine {
 
 	enum Type {
-		INPUT = 0, OUTPUT, ERROR, COUNT
+		INPUT = 0, OUTPUT, ISSUE, COUNT
 	};
 
 	UILine(Type _type, const std::string& _full) : type(_type), fullText(_full) {}
@@ -304,7 +304,7 @@ int main(int, char** ){
 
 				if(ImGui::MenuItem("Clear...")){
 					const int result = sr_gui_ask_choice("Calco", "Are you sure you want to clear?",
-														 SR_GUI_MESSAGE_LEVEL_WARN, "Yes", "No", "");
+														 SR_GUI_MESSAGE_LEVEL_WARN, "Yes", "No", nullptr);
 					if(result == SR_GUI_BUTTON0){
 						state.lines.clear();
 						// Don't clear commands.
@@ -325,9 +325,9 @@ int main(int, char** ){
 			ImGui::EndMainMenuBar();
 		}
 
-		const int menuBarHeight = ImGui::GetItemRectSize().y;
+		const float menuBarHeight = ImGui::GetItemRectSize().y;
 		ImGui::SetNextWindowPos(ImVec2(0.0f, menuBarHeight));
-		ImGui::SetNextWindowSize(ImVec2(float(winW), float(winH - menuBarHeight)));
+		ImGui::SetNextWindowSize(ImVec2(float(winW), float(winH) - menuBarHeight));
 
 		if(ImGui::Begin("CalcoMainWindow", nullptr, winFlags)){
 			const float heightToReserve = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
@@ -342,7 +342,7 @@ int main(int, char** ){
 				const size_t wordCount = line.words.size();
 
 				// Errors only have basic formatting.
-				if(line.type == UILine::ERROR ){
+				if(line.type == UILine::ISSUE){
 					ImGui::PushStyleColor(ImGuiCol_Text, style.errorColor);
 
 					for(size_t wid = 0; wid < wordCount; ++wid){
@@ -377,7 +377,7 @@ int main(int, char** ){
 						ImGui::SameLine(0,0);
 					}
 					if(wid == 0){
-						ImGui::PushID(lid);
+						ImGui::PushID(int(lid));
 						if(ImGui::Selectable(word.text.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)){
 							updateFieldAndClipboard(line.fullText);
 						}
@@ -436,7 +436,7 @@ int main(int, char** ){
 					// Output/error line
 					if(!success){
 						// Error line: passthrough the error message from the calculator.
-						state.lines.emplace_back( UILine::ERROR, result.str);
+						state.lines.emplace_back( UILine::ISSUE, result.str);
 						state.lines.back().words.emplace_back(result.str, Calculator::Word::LITERAL);
 
 					} else if(result.type == Value::Type::STRING){

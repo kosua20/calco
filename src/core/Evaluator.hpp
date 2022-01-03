@@ -3,6 +3,8 @@
 #include "core/Types.hpp"
 #include "core/Functions.hpp"
 
+#include <stack>
+
 class ExpLogger final : public TreeVisitor {
 public:
 	Value process(const Unary& exp) override;

@@ -139,13 +139,13 @@ Status Scanner::scan(){
 
 			try {
 				if(isFloat){
-					const float val = std::stod(number);
+					const double val = std::stod(number);
 					// Only emplace once the conversion has succeeded.
 					_tokens.emplace_back();
 					_tokens.back().type = Token::Type::Float;
 					_tokens.back().fVal = val;
 					_tokens.back().location = startPosition;
-					_tokens.back().size = tokenSize;
+					_tokens.back().size = long(tokenSize);
 				} else {
 					const long long val = std::stoll(number, nullptr, base);
 					// Only emplace once the conversion has succeeded.
@@ -153,7 +153,7 @@ Status Scanner::scan(){
 					_tokens.back().type = Token::Type::Integer;
 					_tokens.back().iVal = val;
 					_tokens.back().location = startPosition;
-					_tokens.back().size = tokenSize;
+					_tokens.back().size = long(tokenSize);
 				}
 			} catch(...) {
 				firstErrorPosition = startPosition;
@@ -180,7 +180,7 @@ Status Scanner::scan(){
 
 			_tokens.emplace_back();
 			_tokens.back().location = startPosition;
-			_tokens.back().size = tokenSize;
+			_tokens.back().size = long(tokenSize);
 
 			// Special case: constant name.
 			if(MathConstants.count(lowIdentifier) != 0){
