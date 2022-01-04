@@ -50,7 +50,6 @@ struct UIStyle {
 	bool displayRowMajor = true;
 
 	void applyBackgroundColor(){
-		ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = backgroundColor;
 	}
 };
 
@@ -238,7 +237,6 @@ int main(int, char** ){
 
 	UIStyle style;
 	UIState state;
-
 	GLFWwindow* window = createWindow(830, 620, style);
 
 	if(!window){
@@ -256,6 +254,8 @@ int main(int, char** ){
 
 	char buffer[1024];
 	memset(buffer, '\0', sizeof(buffer));
+
+	UIStyle tmpStyle;
 
 	Calculator calculator;
 	bool shouldFocusTextField = true;
@@ -288,6 +288,8 @@ int main(int, char** ){
 		glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
+		bool openPopup = false;
+
 		if(ImGui::BeginMainMenuBar()){
 
 			if(ImGui::BeginMenu("File")){
@@ -296,6 +298,8 @@ int main(int, char** ){
 					ImGui::Checkbox("Row major matrix display", &style.displayRowMajor);
 					if(ImGui::Button("Configure colors...")){
 						/// TODO: extra settings for styling
+						tmpStyle = style;
+						openPopup = true;
 					}
 					ImGui::EndMenu();
 				}
@@ -325,12 +329,75 @@ int main(int, char** ){
 			ImGui::EndMainMenuBar();
 		}
 
+		if (openPopup) {
+			ImGui::OpenPopup("Color scheme");
+		}
+
 		const float menuBarHeight = ImGui::GetItemRectSize().y;
+		const float heightToReserve = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
+		const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+		
+
+		ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+		bool showCloseButton = true;
+		if (ImGui::BeginPopupModal("Color scheme", &showCloseButton, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+
+			// Example
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, tmpStyle.backgroundColor);
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1));
+			const float textHeight = ImGui::GetTextLineHeightWithSpacing();
+			ImGui::PushFont(style.consoleFont);
+			ImGui::BeginChildFrame(ImGui::GetID("##Example style"), ImVec2(0, textHeight * 5.0f));
+			/// TODO: use a UILine
+			ImGui::TextUnformatted("x = 3.0 * sin(1.0 + 2.2 * pi)");
+			ImGui::TextUnformatted("= 123456.0");
+			
+			ImGui::TextUnformatted("y = vec3(x, 2 * x)");
+			ImGui::PushStyleColor(ImGuiCol_Text, tmpStyle.errorColor);
+			ImGui::TextUnformatted("Error: incorrect number of arguments");
+			ImGui::PopStyleColor();
+			ImGui::EndChild();
+
+			ImGui::PopFont();
+			ImGui::PopStyleColor();
+			ImGui::PopStyleVar();
+			ImGui::Dummy(ImVec2(0, 6));
+			const uint32_t colorFlags = ImGuiColorEditFlags_NoOptions | ImGuiColorEditFlags_DisplayHex;
+			ImGui::PushItemWidth(120);
+			ImGui::ColorEdit3("Background", &tmpStyle.backgroundColor.x, colorFlags);
+			ImGui::SameLine(240);
+			ImGui::ColorEdit3("Error",		&tmpStyle.errorColor.x, colorFlags);
+			ImGui::ColorEdit3("Variables",	&tmpStyle.wordColors[Calculator::Word::VARIABLE].x, colorFlags);
+			ImGui::SameLine(240);
+			ImGui::ColorEdit3("Functions",	&tmpStyle.wordColors[Calculator::Word::FUNCTION].x, colorFlags);
+			ImGui::ColorEdit3("Operators",	&tmpStyle.wordColors[Calculator::Word::OPERATOR].x, colorFlags);
+			ImGui::SameLine(240);
+			ImGui::ColorEdit3("Separators", &tmpStyle.wordColors[Calculator::Word::SEPARATOR].x, colorFlags);
+			ImGui::ColorEdit3("Literals",	&tmpStyle.wordColors[Calculator::Word::LITERAL].x, colorFlags);
+			ImGui::SameLine(240);
+			ImGui::ColorEdit3("Result",		&tmpStyle.wordColors[Calculator::Word::RESULT].x, colorFlags);
+			ImGui::PopItemWidth();
+			// Buttons
+			if(ImGui::Button("Apply", ImVec2(120, 0))){ 
+				style = tmpStyle;  
+				ImGui::CloseCurrentPopup(); 
+			}
+			ImGui::SetItemDefaultFocus();
+			ImGui::SameLine();
+			if(ImGui::Button("Restore", ImVec2(120, 0))){ 
+				tmpStyle = style;
+			}
+			ImGui::EndPopup();
+		}
+
+		
 		ImGui::SetNextWindowPos(ImVec2(0.0f, menuBarHeight));
 		ImGui::SetNextWindowSize(ImVec2(float(winW), float(winH) - menuBarHeight));
 
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, style.backgroundColor);
+
 		if(ImGui::Begin("CalcoMainWindow", nullptr, winFlags)){
-			const float heightToReserve = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
+
 			ImGui::BeginChild("ScrollingRegion", ImVec2(0, -heightToReserve), false, ImGuiWindowFlags_HorizontalScrollbar);
 
 			ImGui::PushFont(style.consoleFont);
@@ -469,6 +536,8 @@ int main(int, char** ){
 
 		}
 		ImGui::End();
+		ImGui::PopStyleColor();
+
 		shouldFocusTextField = false;
 
 		// Render the interface.
