@@ -63,6 +63,18 @@ struct UIState {
 	bool shouldInsert = false;
 };
 
+void applyDefaultStyle(UIStyle &uiStyle) {
+	uiStyle.backgroundColor 						= ImVec4(0.137255f, 0.031373f, 0.105882f, 1.0f);
+	uiStyle.errorColor 								= ImVec4(0.8f, 0.2f, 0.1f, 1.0f);
+	uiStyle.wordColors[Calculator::Word::LITERAL] 	= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+	uiStyle.wordColors[Calculator::Word::VARIABLE] 	= ImVec4(0.258824f, 0.545098f, 0.000000f, 1.0f);
+	uiStyle.wordColors[Calculator::Word::FUNCTION] 	= ImVec4(0.635294f, 0.835294f, 0.113725f, 1.0f);
+	uiStyle.wordColors[Calculator::Word::OPERATOR] 	= ImVec4(0.713726f, 0.560784f, 0.000000f, 1.0f);
+	uiStyle.wordColors[Calculator::Word::SEPARATOR] = ImVec4(0.603922f, 0.415686f, 0.600000f, 1.0f);
+	uiStyle.wordColors[Calculator::Word::RESULT] 	= ImVec4(0.349020f, 0.556863f, 0.776471f, 1.0f);
+	uiStyle.applyBackgroundColor();
+}
+
 GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 
 	// Initialize glfw, which will create and setup an OpenGL context.
@@ -135,45 +147,37 @@ GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 	style.GrabRounding = 12;
 	style.PopupBorderSize = 0;
 	style.PopupRounding = 3;
+	style.WindowRounding = 5;
 
 	ImVec4* colors = ImGui::GetStyle().Colors;
 	colors[ImGuiCol_FrameBg]                = ImVec4(0.58f, 0.58f, 0.58f, 0.54f);
-	colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.26f, 0.84f, 0.98f, 0.40f);
-	colors[ImGuiCol_FrameBgActive]          = ImVec4(0.26f, 0.84f, 0.98f, 0.40f);
+	colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.72f, 0.72f, 0.72f, 0.40f);
+	colors[ImGuiCol_FrameBgActive]          = ImVec4(0.45f, 0.45f, 0.45f, 0.40f);
 	colors[ImGuiCol_TitleBgActive]          = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
-	colors[ImGuiCol_CheckMark]              = ImVec4(0.08f, 0.71f, 0.77f, 1.00f);
-	colors[ImGuiCol_SliderGrab]             = ImVec4(0.05f, 0.61f, 0.73f, 1.00f);
-	colors[ImGuiCol_SliderGrabActive]       = ImVec4(0.03f, 0.69f, 0.82f, 1.00f);
-	colors[ImGuiCol_Button]                 = ImVec4(0.05f, 0.39f, 0.45f, 1.00f);
-	colors[ImGuiCol_ButtonHovered]          = ImVec4(0.05f, 0.61f, 0.73f, 1.00f);
-	colors[ImGuiCol_ButtonActive]           = ImVec4(0.03f, 0.69f, 0.82f, 1.00f);
+	colors[ImGuiCol_CheckMark]              = ImVec4(0.75f, 0.75f, 0.75f, 1.00f);
+	colors[ImGuiCol_SliderGrab]             = ImVec4(0.73f, 0.73f, 0.73f, 1.00f);
+	colors[ImGuiCol_SliderGrabActive]       = ImVec4(0.82f, 0.82f, 0.82f, 1.00f);
+	colors[ImGuiCol_Button]                 = ImVec4(0.21f, 0.21f, 0.21f, 1.00f);
+	colors[ImGuiCol_ButtonHovered]          = ImVec4(0.63f, 0.63f, 0.63f, 1.00f);
+	colors[ImGuiCol_ButtonActive]           = ImVec4(0.74f, 0.74f, 0.74f, 1.00f);
 	colors[ImGuiCol_Header]                 = ImVec4(1.00f, 1.00f, 1.00F, 0.16f);
 	colors[ImGuiCol_HeaderHovered]          = ImVec4(1.00f, 1.00f, 1.00F, 0.16f);
 	colors[ImGuiCol_HeaderActive]           = ImVec4(1.00f, 1.00f, 1.00F, 0.28f);
-	colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.05f, 0.39f, 0.45f, 1.00f);
-	colors[ImGuiCol_SeparatorActive]        = ImVec4(0.05f, 0.61f, 0.73f, 1.00f);
-	colors[ImGuiCol_ResizeGrip]             = ImVec4(0.05f, 0.39f, 0.45f, 1.00f);
-	colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.05f, 0.61f, 0.73f, 1.00f);
-	colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.03f, 0.69f, 0.82f, 1.00f);
-	colors[ImGuiCol_Tab]                    = ImVec4(0.05f, 0.39f, 0.45f, 1.00f);
-	colors[ImGuiCol_TabHovered]             = ImVec4(0.03f, 0.69f, 0.82f, 1.00f);
-	colors[ImGuiCol_TabActive]              = ImVec4(0.05f, 0.61f, 0.73f, 1.00f);
-	colors[ImGuiCol_TabUnfocused]           = ImVec4(0.02f, 0.16f, 0.18f, 1.00f);
-	colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.04f, 0.26f, 0.31f, 1.00f);
-	colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.04f, 0.26f, 0.31f, 1.00f);
-	colors[ImGuiCol_NavHighlight]           = ImVec4(0.05f, 0.61f, 0.73f, 1.00f);
+	colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.45f, 0.45f, 0.45f, 1.00f);
+	colors[ImGuiCol_SeparatorActive]        = ImVec4(0.73f, 0.73f, 0.73f, 1.00f);
+	colors[ImGuiCol_ResizeGrip]             = ImVec4(0.45f, 0.45f, 0.45f, 1.00f);
+	colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.73f, 0.73f, 0.73f, 1.00f);
+	colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.82f, 0.82f, 0.82f, 1.00f);
+	colors[ImGuiCol_Tab]                    = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
+	colors[ImGuiCol_TabHovered]             = ImVec4(0.82f, 0.82f, 0.82f, 1.00f);
+	colors[ImGuiCol_TabActive]              = ImVec4(0.56f, 0.56f, 0.56f, 1.00f);
+	colors[ImGuiCol_TabUnfocused]           = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
+	colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
+	colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
+	colors[ImGuiCol_NavHighlight]           = ImVec4(0.73f, 0.73f, 0.73f, 1.00f);
 	colors[ImGuiCol_PopupBg]           		= ImVec4(0.15f, 0.15f, 0.15f, 0.94f);
 
-	/// TODO: custom styles
-	uiStyle.backgroundColor 						= ImVec4(0.137255f, 0.031373f, 0.105882f, 1.0f);
-	uiStyle.errorColor 								= ImVec4(0.8f, 0.2f, 0.1f, 1.0f);
-	uiStyle.wordColors[Calculator::Word::LITERAL] 	= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-	uiStyle.wordColors[Calculator::Word::VARIABLE] 	= ImVec4(0.258824f, 0.545098f, 0.000000f, 1.0f);
-	uiStyle.wordColors[Calculator::Word::FUNCTION] 	= ImVec4(0.635294f, 0.835294f, 0.113725f, 1.0f);
-	uiStyle.wordColors[Calculator::Word::OPERATOR] 	= ImVec4(0.713726f, 0.560784f, 0.000000f, 1.0f);
-	uiStyle.wordColors[Calculator::Word::SEPARATOR] = ImVec4(0.603922f, 0.415686f, 0.600000f, 1.0f);
-	uiStyle.wordColors[Calculator::Word::RESULT] 	= ImVec4(0.349020f, 0.556863f, 0.776471f, 1.0f);
-	uiStyle.applyBackgroundColor();
+	applyDefaultStyle(uiStyle);
 
 	return window;
 }
@@ -232,6 +236,137 @@ int textCallback(ImGuiInputTextCallbackData* data){
 	return 0;
 }
 
+int printLines(const std::vector<UILine>& lines, const UIStyle &style, bool selectable) {
+	int selectedLine = -1;
+
+	const size_t lineCount = lines.size();
+	for(size_t lid = 0; lid < lineCount; ++lid){
+		const UILine& line = lines[lid];
+		const size_t wordCount = line.words.size();
+
+		// Errors only have basic formatting.
+		if(line.type == UILine::ISSUE){
+			ImGui::PushStyleColor(ImGuiCol_Text, style.errorColor);
+
+			for(size_t wid = 0; wid < wordCount; ++wid){
+				// Pack words on the same line.
+				if(wid != 0){
+					ImGui::SameLine(0,0);
+				}
+				const UILine::UIWord& word = line.words[wid];
+				ImGui::TextUnformatted(word.text.c_str());
+			}
+			ImGui::PopStyleColor();
+			continue;
+		}
+
+		// Put a space before any input for clarity.
+		if(line.type == UILine::INPUT){
+			ImGui::Dummy(ImVec2(5,12));
+		}
+
+		// Input/output lines are syntax highlighted.
+		for(size_t wid = 0; wid < wordCount; ++wid){
+			// Pack words on the same line.
+			if(wid != 0){
+				ImGui::SameLine(0,0);
+			}
+
+			const UILine::UIWord& word = line.words[wid];
+			ImGui::PushStyleColor(ImGuiCol_Text, style.wordColors[word.type]);
+
+			if(word.type == Calculator::Word::OPERATOR && wid != 0){
+				ImGui::TextUnformatted(" ");
+				ImGui::SameLine(0,0);
+			}
+			if(selectable && wid == 0){
+				ImGui::PushID(int(lid));
+				if(ImGui::Selectable(word.text.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)){
+					selectedLine = lid;
+				}
+				ImGui::PopID();
+			} else {
+				ImGui::TextUnformatted(word.text.c_str());
+			}
+			if(word.type == Calculator::Word::OPERATOR){
+
+				ImGui::SameLine(0,0);
+				ImGui::TextUnformatted(" ");
+			}
+			ImGui::PopStyleColor();
+		}
+	}
+	return selectedLine;
+}
+
+
+void customizeStyle(UIStyle &tmpStyle) {
+	// Preview basic style:
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1));
+	ImGui::PushStyleColor(ImGuiCol_FrameBg, tmpStyle.backgroundColor);
+	const float textHeight = ImGui::GetTextLineHeightWithSpacing();
+	ImGui::PushFont(tmpStyle.consoleFont);
+
+	ImGui::BeginChildFrame(ImGui::GetID("##Example style"), ImVec2(0, textHeight * 6.5f));
+
+	static bool initLines = false;
+	static std::vector<UILine> lines = {
+		{UILine::Type::INPUT, ""},
+		{UILine::Type::OUTPUT, ""},
+		{UILine::Type::INPUT, ""},
+		{UILine::Type::ISSUE, ""},
+	};
+
+	// Lazy init.
+	if(!initLines){
+		// Lines presenting all types of words.
+
+		lines[0].words = {
+			{"x", Calculator::Word::VARIABLE}, {"=", Calculator::Word::OPERATOR}, {"3.0", Calculator::Word::LITERAL},
+			{"*", Calculator::Word::OPERATOR}, {"sin", Calculator::Word::FUNCTION},  {"(", Calculator::Word::SEPARATOR},
+			{"1", Calculator::Word::LITERAL}, {"+", Calculator::Word::OPERATOR},  {"2.2", Calculator::Word::LITERAL},
+			{"*", Calculator::Word::OPERATOR}, {"pi", Calculator::Word::VARIABLE},  {")", Calculator::Word::SEPARATOR}
+		};
+		lines[1].words = {
+			{"=", Calculator::Word::OPERATOR}, {"2.995038", Calculator::Word::RESULT}
+		};
+		lines[2].words = {
+			{"y_val", Calculator::Word::VARIABLE}, {"=", Calculator::Word::OPERATOR}, {"max", Calculator::Word::FUNCTION}, {"(", Calculator::Word::SEPARATOR},
+			{"x", Calculator::Word::VARIABLE}, {"*", Calculator::Word::OPERATOR},  {"2.0", Calculator::Word::LITERAL},
+			{",", Calculator::Word::SEPARATOR}, {"z_top", Calculator::Word::VARIABLE},  {")", Calculator::Word::SEPARATOR}
+		};
+		lines[3].words = {
+			{"Error: unknown variable z_top", Calculator::Word::RESULT}
+		};
+		initLines =true;
+	}
+
+	printLines(lines, tmpStyle, false);
+
+	ImGui::EndChild();
+
+	ImGui::PopFont();
+	ImGui::PopStyleColor();
+	ImGui::PopStyleVar();
+
+	ImGui::Dummy(ImVec2(0, 6));
+
+	const uint32_t colorFlags = ImGuiColorEditFlags_NoOptions | ImGuiColorEditFlags_DisplayHex;
+	ImGui::PushItemWidth(120);
+	ImGui::ColorEdit3("Background", &tmpStyle.backgroundColor.x, colorFlags);
+	ImGui::SameLine(220);
+	ImGui::ColorEdit3("Error",		&tmpStyle.errorColor.x, colorFlags);
+	ImGui::ColorEdit3("Variables",	&tmpStyle.wordColors[Calculator::Word::VARIABLE].x, colorFlags);
+	ImGui::SameLine(220);
+	ImGui::ColorEdit3("Functions",	&tmpStyle.wordColors[Calculator::Word::FUNCTION].x, colorFlags);
+	ImGui::ColorEdit3("Operators",	&tmpStyle.wordColors[Calculator::Word::OPERATOR].x, colorFlags);
+	ImGui::SameLine(220);
+	ImGui::ColorEdit3("Separators", &tmpStyle.wordColors[Calculator::Word::SEPARATOR].x, colorFlags);
+	ImGui::ColorEdit3("Literals",	&tmpStyle.wordColors[Calculator::Word::LITERAL].x, colorFlags);
+	ImGui::SameLine(220);
+	ImGui::ColorEdit3("Result",		&tmpStyle.wordColors[Calculator::Word::RESULT].x, colorFlags);
+	ImGui::PopItemWidth();
+}
 
 int main(int, char** ){
 
@@ -260,18 +395,8 @@ int main(int, char** ){
 	Calculator calculator;
 	bool shouldFocusTextField = true;
 
-	auto updateFieldAndClipboard = [&state, &shouldFocusTextField](const std::string& newContent){
-		ImGui::SetClipboardText(newContent.c_str());
-		if (ImGui::IsMouseDoubleClicked(0)){
-			// Register text to insert, will be done in the text field conitnuous callback.
-			state.shouldInsert = true;
-			state.textToInsert = newContent;
-			shouldFocusTextField = true;
-		}
-
-	};
-
 	/// TODO: save/restore calculator state (save all internal state + formatted output)
+	/// TODO: save/restore style and settings
 
 	while(!glfwWindowShouldClose(window)) {
 
@@ -295,12 +420,12 @@ int main(int, char** ){
 			if(ImGui::BeginMenu("File")){
 
 				if(ImGui::BeginMenu("Settings")){
-					ImGui::Checkbox("Row major matrix display", &style.displayRowMajor);
-					if(ImGui::Button("Configure colors...")){
-						/// TODO: extra settings for styling
+
+					if(ImGui::MenuItem("Configure colors...")){
 						tmpStyle = style;
 						openPopup = true;
 					}
+					ImGui::Checkbox("Row major matrix display", &style.displayRowMajor);
 					ImGui::EndMenu();
 				}
 
@@ -335,48 +460,14 @@ int main(int, char** ){
 
 		const float menuBarHeight = ImGui::GetItemRectSize().y;
 		const float heightToReserve = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
-		const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-		
 
-		ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+		//ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 		bool showCloseButton = true;
 		if (ImGui::BeginPopupModal("Color scheme", &showCloseButton, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
 
 			// Example
-			ImGui::PushStyleColor(ImGuiCol_FrameBg, tmpStyle.backgroundColor);
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1));
-			const float textHeight = ImGui::GetTextLineHeightWithSpacing();
-			ImGui::PushFont(style.consoleFont);
-			ImGui::BeginChildFrame(ImGui::GetID("##Example style"), ImVec2(0, textHeight * 5.0f));
-			/// TODO: use a UILine
-			ImGui::TextUnformatted("x = 3.0 * sin(1.0 + 2.2 * pi)");
-			ImGui::TextUnformatted("= 123456.0");
-			
-			ImGui::TextUnformatted("y = vec3(x, 2 * x)");
-			ImGui::PushStyleColor(ImGuiCol_Text, tmpStyle.errorColor);
-			ImGui::TextUnformatted("Error: incorrect number of arguments");
-			ImGui::PopStyleColor();
-			ImGui::EndChild();
+			customizeStyle(tmpStyle);
 
-			ImGui::PopFont();
-			ImGui::PopStyleColor();
-			ImGui::PopStyleVar();
-			ImGui::Dummy(ImVec2(0, 6));
-			const uint32_t colorFlags = ImGuiColorEditFlags_NoOptions | ImGuiColorEditFlags_DisplayHex;
-			ImGui::PushItemWidth(120);
-			ImGui::ColorEdit3("Background", &tmpStyle.backgroundColor.x, colorFlags);
-			ImGui::SameLine(240);
-			ImGui::ColorEdit3("Error",		&tmpStyle.errorColor.x, colorFlags);
-			ImGui::ColorEdit3("Variables",	&tmpStyle.wordColors[Calculator::Word::VARIABLE].x, colorFlags);
-			ImGui::SameLine(240);
-			ImGui::ColorEdit3("Functions",	&tmpStyle.wordColors[Calculator::Word::FUNCTION].x, colorFlags);
-			ImGui::ColorEdit3("Operators",	&tmpStyle.wordColors[Calculator::Word::OPERATOR].x, colorFlags);
-			ImGui::SameLine(240);
-			ImGui::ColorEdit3("Separators", &tmpStyle.wordColors[Calculator::Word::SEPARATOR].x, colorFlags);
-			ImGui::ColorEdit3("Literals",	&tmpStyle.wordColors[Calculator::Word::LITERAL].x, colorFlags);
-			ImGui::SameLine(240);
-			ImGui::ColorEdit3("Result",		&tmpStyle.wordColors[Calculator::Word::RESULT].x, colorFlags);
-			ImGui::PopItemWidth();
 			// Buttons
 			if(ImGui::Button("Apply", ImVec2(120, 0))){ 
 				style = tmpStyle;  
@@ -384,8 +475,12 @@ int main(int, char** ){
 			}
 			ImGui::SetItemDefaultFocus();
 			ImGui::SameLine();
-			if(ImGui::Button("Restore", ImVec2(120, 0))){ 
+			if(ImGui::Button("Revert", ImVec2(120, 0))){
 				tmpStyle = style;
+			}
+			ImGui::SameLine();
+			if(ImGui::Button("Default", ImVec2(120, 0))){
+				applyDefaultStyle(tmpStyle);
 			}
 			ImGui::EndPopup();
 		}
@@ -402,64 +497,22 @@ int main(int, char** ){
 
 			ImGui::PushFont(style.consoleFont);
 
-			const size_t lineCount = state.lines.size();
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1));
-			for(size_t lid = 0; lid < lineCount; ++lid){
-				const UILine& line = state.lines[lid];
-				const size_t wordCount = line.words.size();
 
-				// Errors only have basic formatting.
-				if(line.type == UILine::ISSUE){
-					ImGui::PushStyleColor(ImGuiCol_Text, style.errorColor);
+			const int selectedLine = printLines(state.lines, style, true);
+			if(selectedLine >= 0){
+				// Store selected line in clipboard.
+				const std::string& newContent = state.lines[selectedLine].fullText;
+				ImGui::SetClipboardText(newContent.c_str());
 
-					for(size_t wid = 0; wid < wordCount; ++wid){
-						// Pack words on the same line.
-						if(wid != 0){
-							ImGui::SameLine(0,0);
-						}
-						const UILine::UIWord& word = line.words[wid];
-						ImGui::TextUnformatted(word.text.c_str());
-					}
-					ImGui::PopStyleColor();
-					continue;
-				}
-
-				// Put a space before any input for clarity.
-				if(line.type == UILine::INPUT){
-					ImGui::Dummy(ImVec2(5,12));
-				}
-
-				// Input/output lines are syntax highlighted.
-				for(size_t wid = 0; wid < wordCount; ++wid){
-					// Pack words on the same line.
-					if(wid != 0){
-						ImGui::SameLine(0,0);
-					}
-
-					const UILine::UIWord& word = line.words[wid];
-					ImGui::PushStyleColor(ImGuiCol_Text, style.wordColors[word.type]);
-
-					if(word.type == Calculator::Word::OPERATOR && wid != 0){
-						ImGui::TextUnformatted(" ");
-						ImGui::SameLine(0,0);
-					}
-					if(wid == 0){
-						ImGui::PushID(int(lid));
-						if(ImGui::Selectable(word.text.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)){
-							updateFieldAndClipboard(line.fullText);
-						}
-						ImGui::PopID();
-					} else {
-						ImGui::TextUnformatted(word.text.c_str());
-					}
-					if(word.type == Calculator::Word::OPERATOR){
-
-						ImGui::SameLine(0,0);
-						ImGui::TextUnformatted(" ");
-					}
-					ImGui::PopStyleColor();
+				if(ImGui::IsMouseDoubleClicked(0)){
+					// Register text to insert, will be done in the text field conitnuous callback.
+					state.shouldInsert = true;
+					state.textToInsert = newContent;
+					shouldFocusTextField = true;
 				}
 			}
+
 			ImGui::PopStyleVar();
 
 			ImGui::PopFont();
