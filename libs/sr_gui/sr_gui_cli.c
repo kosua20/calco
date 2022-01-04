@@ -178,10 +178,25 @@ int sr_gui_ask_choice(const char* title, const char* message, int level, const c
 	} else if(level == SR_GUI_MESSAGE_LEVEL_WARN) {
 		header = "Warning";
 	}
+	const char* buttons[] = { button0, button1, button2 };
 
 	fprintf(stdout, "--- %s --- %s\n", header, title);
 	fprintf(stdout, "%s\n", message);
-	fprintf(stdout, "(1) %s --- (2) %s --- (3) %s\n", button0, button1, button2);
+	
+	int following = 0;
+	const int bCount = sizeof(buttons)/sizeof(buttons[0]);
+	for(int bid = 0; bid < bCount; ++bid){
+		if(buttons[bid] == NULL){
+			continue;
+		}
+		if(following){
+			fprintf(stdout, "--- ");
+		}
+
+		fprintf(stdout, "(%d) %s ", (bid + 1), buttons[bid]);
+		following = 1;
+	}
+	fprintf(stdout, "\n");
 	fprintf(stdout, "Type the number corresponding to your selected option, and press enter to validate.\n");
 
 	char buffer[64];
@@ -198,8 +213,13 @@ int sr_gui_ask_choice(const char* title, const char* message, int level, const c
 	if(res < 1 || res == EOF) {
 		return SR_GUI_CANCELLED;
 	}
-	button = (int)fmin(fmax(button - 1, 0), 2);
-	return SR_GUI_BUTTON0 + button;
+
+	for(int bid = 0; bid < bCount; ++bid){
+		if(buttons[bid] != NULL && ((bid+1) == button)){
+			return SR_GUI_BUTTON0 + bid;
+		}
+	}
+	return SR_GUI_CANCELLED;
 }
 
 int sr_gui_ask_string(const char* title, const char* message, char** result) {

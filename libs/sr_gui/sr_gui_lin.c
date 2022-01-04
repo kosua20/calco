@@ -238,9 +238,29 @@ int sr_gui_ask_choice(const char* title, const char* message, int level, const c
 	} else if(level == SR_GUI_MESSAGE_LEVEL_WARN) {
 		iconName = "dialog-warning";
 	}
+	const char* buttons[] = { button0, button1, button2 };
+	const int bCount = sizeof(buttons)/sizeof(buttons[0]);
 
-	GtkWidget* dialog = gtk_dialog_new_with_buttons(NULL, NULL, GTK_DIALOG_MODAL, button0, SR_GUI_BUTTON0, button1, SR_GUI_BUTTON1, button2, SR_GUI_BUTTON2, NULL);
-	gtk_dialog_set_default_response(GTK_DIALOG(dialog), SR_GUI_BUTTON0);
+	// We allow some labels to be null, and should skip them while preserving the returned index.
+	// (pressing button2 should always return 2 even if button1 == NULL)
+	const char* selectedButtons[3];
+	int selectedIDs[3];
+	int localIndex = 0;
+
+	for(int bid = 0; bid < bCount; ++bid){
+		if(buttons[bid] == NULL){
+			continue;
+		}
+		selectedButtons[localIndex] = buttons[bid];
+		selectedIDs[localIndex] = SR_GUI_BUTTON0 + bid;
+		++localIndex;
+	}
+	for(int bid = localIndex; bid < bCount; ++bid){
+		selectedButtons[localIndex] = NULL;
+	}
+
+	GtkWidget* dialog = gtk_dialog_new_with_buttons(NULL, NULL, GTK_DIALOG_MODAL, selectedButtons[0], selectedIDs[0], selectedButtons[1], selectedIDs[1], selectedButtons[2], selectedIDs[2], NULL);
+	gtk_dialog_set_default_response(GTK_DIALOG(dialog), selectedIDs[0]);
 
 	// Add title, message and icon with the proper layout.
 
@@ -282,10 +302,12 @@ int sr_gui_ask_choice(const char* title, const char* message, int level, const c
 	int res = gtk_dialog_run(GTK_DIALOG(dialog));
 	gtk_widget_destroy(dialog);
 
-	if(res != SR_GUI_BUTTON0 && res != SR_GUI_BUTTON1 && res != SR_GUI_BUTTON2) {
-		return SR_GUI_CANCELLED;
+	for(int bid = 0; bid < bCount; ++bid){
+		if(buttons[bid] != NULL && ((SR_GUI_BUTTON0+bid) == res)){
+			return SR_GUI_BUTTON0 + bid;
+		}
 	}
-	return res;
+	return SR_GUI_CANCELLED;
 }
 
 int sr_gui_ask_string(const char* title, const char* message, char** result) {

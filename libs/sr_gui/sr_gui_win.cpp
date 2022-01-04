@@ -38,6 +38,9 @@ void sr_gui_cleanup() {
 
 // Transfer output ownership to the caller.
 wchar_t* _sr_gui_widen_string(const char* str) {
+	if(str == NULL){
+		return NULL;
+	}
 	const int sizeWide = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
 	wchar_t* output	   = (wchar_t*)SR_GUI_MALLOC(sizeWide * sizeof(wchar_t));
 	MultiByteToWideChar(CP_UTF8, 0, str, -1, output, sizeWide);
@@ -46,6 +49,9 @@ wchar_t* _sr_gui_widen_string(const char* str) {
 
 // Transfer output ownership to the caller.
 char* _sr_gui_narrow_string(const wchar_t* wstr) {
+	if(wstr == NULL) {
+		return NULL;
+	}
 	const int sizeNarrow = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, NULL, 0, NULL, NULL);
 	char* output		 = (char*)SR_GUI_MALLOC(sizeNarrow * sizeof(char));
 	WideCharToMultiByte(CP_UTF8, 0, wstr, -1, output, sizeNarrow, NULL, NULL);
@@ -72,7 +78,7 @@ void sr_gui_show_message(const char* title, const char* message, int level) {
 }
 
 void sr_gui_show_notification(const char* title, const char* message) {
-	// Generate wide cahr constant string from char one.
+	// Generate wide char constant string from a char one.
 #	define LTEXTC(M) L##M
 #	define LTEXT(M) LTEXTC(M)
 
@@ -535,7 +541,21 @@ int sr_gui_ask_choice(const char* title, const char* message, int level, const c
 	WCHAR* button1W = _sr_gui_widen_string(button1);
 	WCHAR* button2W = _sr_gui_widen_string(button2);
 
-	const TASKDIALOG_BUTTON buttons[] = {{SR_GUI_BUTTON0, button0W}, {SR_GUI_BUTTON1, button1W}, {SR_GUI_BUTTON2, button2W}};
+	WCHAR* buttons[] = {button0W, button1W, button2W};
+	const int bCount = sizeof(buttons)/sizeof(buttons[0]);
+
+	TASKDIALOG_BUTTON winButtons[3];
+	int localIndex = 0;
+
+	// We allow some labels to be null, and should skip them while preserving the returned index.
+	// (pressing button2 should always return 2 even if button1 == NULL)
+	for(int bid = 0; bid < bCount; ++bid){
+		if(buttons[bid] == NULL){
+			continue;
+		}
+		winButtons[localIndex] = {SR_GUI_BUTTON0 + bid, buttons[bid]};
+		++localIndex;
+	}
 
 	PCWSTR icon = TD_INFORMATION_ICON;
 	if(level == SR_GUI_MESSAGE_LEVEL_ERROR) {
@@ -550,9 +570,9 @@ int sr_gui_ask_choice(const char* title, const char* message, int level, const c
 	dialog.pszMainIcon		  = icon;
 	dialog.pszMainInstruction = titleW;
 	dialog.pszContent		  = messageW;
-	dialog.pButtons			  = buttons;
-	dialog.cButtons			  = ARRAYSIZE(buttons);
-	dialog.nDefaultButton	  = SR_GUI_BUTTON0;
+	dialog.pButtons			  = winButtons;
+	dialog.cButtons			  = localIndex;
+	dialog.nDefaultButton	  = winButtons[0].nButtonID;
 
 	int button	= -1;
 	HRESULT res = TaskDialogIndirect(&dialog, &button, NULL, NULL);
@@ -565,11 +585,17 @@ int sr_gui_ask_choice(const char* title, const char* message, int level, const c
 	SR_GUI_FREE(button2W);
 
 	// Result
-	if(FAILED(res) || button < SR_GUI_BUTTON0 || button > SR_GUI_BUTTON2) {
+	if(FAILED(res)) {
 		return SR_GUI_CANCELLED;
 	}
 
-	return button;
+	for(int bid = 0; bid < bCount; ++bid){
+		if(buttons[bid] != NULL && ((SR_GUI_BUTTON0 + bid) == button)) {
+			return SR_GUI_BUTTON0 + bid;
+		}
+	}
+
+	return SR_GUI_CANCELLED;
 }
 
 struct _sr_gui_message_callback_data {

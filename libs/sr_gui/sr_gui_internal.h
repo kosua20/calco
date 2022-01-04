@@ -18,7 +18,7 @@
 #	define SR_GUI_MAX_STR_SIZE 1024
 #endif
 
-#define SR_GUI_APP_ID "com.sr.quantizer"
-#define SR_GUI_APP_NAME "Quantizer App"
+#define SR_GUI_APP_ID "com.sr.calco"
+#define SR_GUI_APP_NAME "Calco"
 
 #endif

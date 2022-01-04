@@ -150,6 +150,9 @@ int sr_gui_ask_save_file(const char* title, const char* startDir, const char* ex
 
 int sr_gui_ask_choice(const char* title, const char* message, int level, const char* button0, const char* button1, const char* button2) {
 
+	const char* buttons[] = {button0, button1, button2};
+	const int bCount = sizeof(buttons)/sizeof(buttons[0]);
+
 	NSAlert* alert		  = [[NSAlert alloc] init];
 	alert.messageText	  = [[NSString alloc] initWithUTF8String:title];
 	alert.informativeText = [[NSString alloc] initWithUTF8String:message];
@@ -165,12 +168,18 @@ int sr_gui_ask_choice(const char* title, const char* message, int level, const c
 		alert.icon		 = [NSImage imageNamed:NSImageNameInfo];
 	}
 
-	[alert addButtonWithTitle:[[NSString alloc] initWithUTF8String:button0]];
-	[alert addButtonWithTitle:[[NSString alloc] initWithUTF8String:button1]];
-	[alert addButtonWithTitle:[[NSString alloc] initWithUTF8String:button2]];
-	[[[alert buttons] objectAtIndex:0] setTag:SR_GUI_BUTTON0];
-	[[[alert buttons] objectAtIndex:1] setTag:SR_GUI_BUTTON1];
-	[[[alert buttons] objectAtIndex:2] setTag:SR_GUI_BUTTON2];
+	// We allow some labels to be null, and should skip them while preserving the returned index.
+	// (pressing button2 should always return 2 even if button1 == NULL)
+	int localIndex = 0;
+	for(int bid = 0; bid < bCount; ++bid){
+		if(buttons[bid] == NULL){
+			continue;
+		}
+		[alert addButtonWithTitle: [[NSString alloc] initWithUTF8String: buttons[bid]]];
+		[[[alert buttons] objectAtIndex: localIndex] setTag:(SR_GUI_BUTTON0 + bid)];
+		++localIndex;
+	}
+
 	// Run and release.
 	NSModalResponse rep = [alert runModal];
 	[alert release];
