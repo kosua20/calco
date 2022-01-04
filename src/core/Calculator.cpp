@@ -76,7 +76,7 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 			{
 				// Special cases: ( ) , . and unary (operator following an operator or at beginning of line)
 				const bool isSeparator = token.opVal == Operator::OpenParenth || token.opVal == Operator::CloseParenth || token.opVal == Operator::Comma || token.opVal == Operator::Dot;
-				const bool followOperator = tid == 0 || tokens[tid-1].type == Token::Type::Operator;
+				const bool followOperator = tid == 0 || (tokens[tid-1].type == Token::Type::Operator && tokens[tid-1].opVal != Operator::CloseParenth);
 				infos[tid].type = (isSeparator || followOperator) ? Word::SEPARATOR : Word::OPERATOR;
 				break;
 			}
