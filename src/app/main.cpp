@@ -1,6 +1,7 @@
 #include "core/Common.hpp"
 #include "core/Strings.hpp"
 #include "core/Calculator.hpp"
+#include "core/Settings.hpp"
 
 #include "core/system/Config.hpp"
 #include "core/system/System.hpp"
@@ -42,15 +43,100 @@ struct UILine {
 
 struct UIStyle {
 
+	UIStyle(){
+		resetColors();
+	}
+
+	void resetColors(){
+		backgroundColor 						= ImVec4(0.137255f, 0.031373f, 0.105882f, 1.0f);
+		errorColor 								= ImVec4(0.8f, 0.2f, 0.1f, 1.0f);
+		wordColors[Calculator::Word::LITERAL] 	= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+		wordColors[Calculator::Word::VARIABLE] 	= ImVec4(0.258824f, 0.545098f, 0.000000f, 1.0f);
+		wordColors[Calculator::Word::FUNCTION] 	= ImVec4(0.635294f, 0.835294f, 0.113725f, 1.0f);
+		wordColors[Calculator::Word::OPERATOR] 	= ImVec4(0.713726f, 0.560784f, 0.000000f, 1.0f);
+		wordColors[Calculator::Word::SEPARATOR] = ImVec4(0.603922f, 0.415686f, 0.600000f, 1.0f);
+		wordColors[Calculator::Word::RESULT] 	= ImVec4(0.349020f, 0.556863f, 0.776471f, 1.0f);
+	}
+
+	void loadFromFile(const std::string& path){
+		std::ifstream file(path);
+		if(!file.is_open()){
+			Log::Error() << "Unable to load settings from file \"" << path << "\"" << std::endl;
+			return;
+		}
+		std::string line;
+		while(std::getline(file, line)){
+			const std::vector<std::string>& lineElements = TextUtilities::split(line, " ", true);
+			if(lineElements.size() < 2){
+				continue;
+			}
+			const std::string& key = lineElements[0];
+			if(key == "ROWMAJOR"){
+				displayRowMajor = std::stoi(lineElements[1]) != 0;
+				continue;
+			}
+			// all other are colors
+			if(lineElements.size() < 4){
+				Log::Error() << "Missing parameters for keyword \"" << key << "\"" << std::endl;
+				continue;
+			}
+			ImVec4 color(1.f,1.f,1.f,1.f);
+			color.x = std::stof(lineElements[1]);
+			color.y = std::stof(lineElements[2]);
+			color.z = std::stof(lineElements[3]);
+
+			if(key == "BACKGROUND"){
+				backgroundColor = color;
+				continue;
+			} else if(key == "ERROR"){
+				errorColor = color;
+				continue;
+			}
+			bool used = false;
+			for(int i = 0; i < Calculator::Word::COUNT; ++i){
+				if(key == wordNames[i]){
+					used = true;
+					wordColors[i] = color;
+					break;
+				}
+			}
+
+			if(used){
+				continue;
+			}
+			Log::Error() << "Unknown keyword \"" << key << "\"" << std::endl;
+		}
+		file.close();
+	}
+
+	void saveToFile(const std::string& path){
+		std::ofstream file(path);
+		if(!file.is_open()){
+			Log::Error() << "Unable to save settings to file \"" << path << "\"" << std::endl;
+			return;
+		}
+
+		file << "BACKGROUND " << backgroundColor.x << " " << backgroundColor.y << " " << backgroundColor.z << "\n";
+		file << "ERROR " << errorColor.x << " " << errorColor.y << " " << errorColor.z << "\n";
+		file << "ROWMAJOR " << (displayRowMajor ? 1 : 0) << "\n";
+		for(uint i = 0; i < Calculator::Word::COUNT; ++i){
+			file << wordNames[i] << " " << wordColors[i].x << " " << wordColors[i].y << " " << wordColors[i].z << "\n";
+		}
+		file.close();
+	}
+
 	ImFont* consoleFont = nullptr;
 	ImFont* textFont = nullptr;
 	ImVec4 errorColor;
 	ImVec4 backgroundColor;
 	ImVec4 wordColors[Calculator::Word::COUNT];
 	bool displayRowMajor = true;
+	static const std::string wordNames[Calculator::Word::COUNT];
 
-	void applyBackgroundColor(){
-	}
+};
+
+const std::string UIStyle::wordNames[] = {
+	"LITERAL", "VARIABLE", "FUNCTION", "OPERATOR", "SEPARATOR", "RESULT"
 };
 
 struct UIState {
@@ -61,19 +147,8 @@ struct UIState {
 	int historyPos = -1;
 	std::string textToInsert;
 	bool shouldInsert = false;
-};
 
-void applyDefaultStyle(UIStyle &uiStyle) {
-	uiStyle.backgroundColor 						= ImVec4(0.137255f, 0.031373f, 0.105882f, 1.0f);
-	uiStyle.errorColor 								= ImVec4(0.8f, 0.2f, 0.1f, 1.0f);
-	uiStyle.wordColors[Calculator::Word::LITERAL] 	= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-	uiStyle.wordColors[Calculator::Word::VARIABLE] 	= ImVec4(0.258824f, 0.545098f, 0.000000f, 1.0f);
-	uiStyle.wordColors[Calculator::Word::FUNCTION] 	= ImVec4(0.635294f, 0.835294f, 0.113725f, 1.0f);
-	uiStyle.wordColors[Calculator::Word::OPERATOR] 	= ImVec4(0.713726f, 0.560784f, 0.000000f, 1.0f);
-	uiStyle.wordColors[Calculator::Word::SEPARATOR] = ImVec4(0.603922f, 0.415686f, 0.600000f, 1.0f);
-	uiStyle.wordColors[Calculator::Word::RESULT] 	= ImVec4(0.349020f, 0.556863f, 0.776471f, 1.0f);
-	uiStyle.applyBackgroundColor();
-}
+};
 
 GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 
@@ -176,8 +251,6 @@ GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 	colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
 	colors[ImGuiCol_NavHighlight]           = ImVec4(0.73f, 0.73f, 0.73f, 1.00f);
 	colors[ImGuiCol_PopupBg]           		= ImVec4(0.15f, 0.15f, 0.15f, 0.94f);
-
-	applyDefaultStyle(uiStyle);
 
 	return window;
 }
@@ -367,9 +440,26 @@ void customizeStyle(UIStyle &tmpStyle) {
 	ImGui::PopItemWidth();
 }
 
-int main(int, char** ){
+int main(int argc, char** argv){
 
+	CalcoConfig config(std::vector<std::string>(argv, argv+argc));
+	if(config.version){
+		Log::Info() << versionMessage << std::endl;
+		return 0;
+	} else if(config.license){
+		Log::Info() << licenseMessage << std::endl;
+		return 0;
+	} else if(config.bonus){
+		Log::Info() << bonusMessage << std::endl;
+		return 0;
+	} else if(config.showHelp(false)){
+		return 0;
+	}
+
+	// Load settings.
 	UIStyle style;
+	style.loadFromFile(config.settingsPath);
+
 	UIState state;
 	GLFWwindow* window = createWindow(830, 620, style);
 
@@ -379,8 +469,6 @@ int main(int, char** ){
 	}
 
 	sr_gui_init();
-
-	//char* defaultPath = std::getenv("CALCO_FILE");
 
 	int winW, winH;
 
@@ -392,11 +480,10 @@ int main(int, char** ){
 	UIStyle tmpStyle;
 
 	Calculator calculator;
-	bool shouldFocusTextField = true;
-
 	/// TODO: save/restore calculator state (save all internal state + formatted output)
-	/// TODO: save/restore style and settings
 
+
+	bool shouldFocusTextField = true;
 	while(!glfwWindowShouldClose(window)) {
 
 		glfwPollEvents();
@@ -469,7 +556,7 @@ int main(int, char** ){
 
 			// Buttons
 			if(ImGui::Button("Apply", ImVec2(120, 0))){ 
-				style = tmpStyle;  
+				style = tmpStyle;
 				ImGui::CloseCurrentPopup(); 
 			}
 			ImGui::SetItemDefaultFocus();
@@ -479,7 +566,7 @@ int main(int, char** ){
 			}
 			ImGui::SameLine();
 			if(ImGui::Button("Default", ImVec2(120, 0))){
-				applyDefaultStyle(tmpStyle);
+				tmpStyle.resetColors();
 			}
 			ImGui::EndPopup();
 		}
@@ -541,7 +628,7 @@ int main(int, char** ){
 					Format format;
 					std::vector<Calculator::Word> wordInfos;
 					const bool success = calculator.evaluate(newLine, result, wordInfos, format);
-					
+
 					// Put a break before any input for clarity.
 					state.lines.emplace_back(UILine::EMPTY, "");
 
@@ -558,14 +645,12 @@ int main(int, char** ){
 					// Output/error line
 					if(!success){
 						// Error line: passthrough the error message from the calculator.
-						
 						// The message can be multi-lines, split it.
-						std::string::size_type endPos;
-						std::string::size_type startPos = 0;
 						const std::vector<std::string> sublines = TextUtilities::split(result.str, "\n", false);
 						for (const std::string& subline : sublines) {
 							state.lines.emplace_back(UILine::ISSUE, subline);
 						}
+						
 					} else if(result.type == Value::Type::STRING){
 						// This is 'function definition' specific.
 						state.lines.emplace_back( UILine::OUTPUT, result.str);
@@ -606,9 +691,10 @@ int main(int, char** ){
 		
 		glfwSwapBuffers(window);
 	}
+	// Save settings.
+	style.saveToFile(config.settingsPath);
 
 	// Cleanup.
-
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
