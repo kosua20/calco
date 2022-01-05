@@ -22,7 +22,7 @@
 struct UILine {
 
 	enum Type {
-		INPUT = 0, OUTPUT, ISSUE, COUNT
+		INPUT = 0, OUTPUT, ISSUE, EMPTY, COUNT
 	};
 
 	UILine(Type _type, const std::string& _full) : type(_type), fullText(_full) {}
@@ -240,62 +240,61 @@ int printLines(const std::vector<UILine>& lines, const UIStyle &style, bool sele
 	int selectedLine = -1;
 
 	const size_t lineCount = lines.size();
-	for(size_t lid = 0; lid < lineCount; ++lid){
-		const UILine& line = lines[lid];
-		const size_t wordCount = line.words.size();
+	ImGuiListClipper clipper;
+	clipper.Begin(lineCount, ImGui::GetTextLineHeightWithSpacing());
 
-		// Errors only have basic formatting.
-		if(line.type == UILine::ISSUE){
-			ImGui::PushStyleColor(ImGuiCol_Text, style.errorColor);
+	while (clipper.Step()) {
+		for (int lid = clipper.DisplayStart; lid < clipper.DisplayEnd; ++lid) {
+			const UILine& line = lines[lid];
+			const size_t wordCount = line.words.size();
 
-			for(size_t wid = 0; wid < wordCount; ++wid){
+			if (line.type == UILine::EMPTY) {
+				ImGui::TextUnformatted("");
+				continue;
+			}
+
+			// Errors only have basic formatting.
+			if (line.type == UILine::ISSUE) {
+				ImGui::PushStyleColor(ImGuiCol_Text, style.errorColor);
+				ImGui::TextUnformatted(line.fullText.c_str());
+				ImGui::PopStyleColor();
+				continue;
+			}
+
+			// Input/output lines are syntax highlighted.
+			for (size_t wid = 0; wid < wordCount; ++wid) {
 				// Pack words on the same line.
-				if(wid != 0){
-					ImGui::SameLine(0,0);
+				if (wid != 0) {
+					ImGui::SameLine(0, 0);
 				}
+
 				const UILine::UIWord& word = line.words[wid];
-				ImGui::TextUnformatted(word.text.c_str());
-			}
-			ImGui::PopStyleColor();
-			continue;
-		}
+				ImGui::PushStyleColor(ImGuiCol_Text, style.wordColors[word.type]);
 
-		// Put a space before any input for clarity.
-		if(line.type == UILine::INPUT){
-			ImGui::Dummy(ImVec2(5,12));
-		}
-
-		// Input/output lines are syntax highlighted.
-		for(size_t wid = 0; wid < wordCount; ++wid){
-			// Pack words on the same line.
-			if(wid != 0){
-				ImGui::SameLine(0,0);
-			}
-
-			const UILine::UIWord& word = line.words[wid];
-			ImGui::PushStyleColor(ImGuiCol_Text, style.wordColors[word.type]);
-
-			if(word.type == Calculator::Word::OPERATOR && wid != 0){
-				ImGui::TextUnformatted(" ");
-				ImGui::SameLine(0,0);
-			}
-			if(selectable && wid == 0){
-				ImGui::PushID(int(lid));
-				if(ImGui::Selectable(word.text.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)){
-					selectedLine = lid;
+				if (word.type == Calculator::Word::OPERATOR && wid != 0) {
+					ImGui::TextUnformatted(" ");
+					ImGui::SameLine(0, 0);
 				}
-				ImGui::PopID();
-			} else {
-				ImGui::TextUnformatted(word.text.c_str());
-			}
-			if(word.type == Calculator::Word::OPERATOR){
+				if (selectable && wid == 0) {
+					ImGui::PushID(int(lid));
+					if (ImGui::Selectable(word.text.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)) {
+						selectedLine = lid;
+					}
+					ImGui::PopID();
+				}
+				else {
+					ImGui::TextUnformatted(word.text.c_str());
+				}
+				if (word.type == Calculator::Word::OPERATOR) {
 
-				ImGui::SameLine(0,0);
-				ImGui::TextUnformatted(" ");
+					ImGui::SameLine(0, 0);
+					ImGui::TextUnformatted(" ");
+				}
+				ImGui::PopStyleColor();
 			}
-			ImGui::PopStyleColor();
 		}
 	}
+	clipper.End();
 	return selectedLine;
 }
 
@@ -542,6 +541,9 @@ int main(int, char** ){
 					Format format;
 					std::vector<Calculator::Word> wordInfos;
 					const bool success = calculator.evaluate(newLine, result, wordInfos, format);
+					
+					// Put a break before any input for clarity.
+					state.lines.emplace_back(UILine::EMPTY, "");
 
 					// Input line, with syntax highlighted words.
 					UILine& line = state.lines.emplace_back(UILine::INPUT, newLine);
@@ -556,9 +558,14 @@ int main(int, char** ){
 					// Output/error line
 					if(!success){
 						// Error line: passthrough the error message from the calculator.
-						state.lines.emplace_back( UILine::ISSUE, result.str);
-						state.lines.back().words.emplace_back(result.str, Calculator::Word::LITERAL);
-
+						
+						// The message can be multi-lines, split it.
+						std::string::size_type endPos;
+						std::string::size_type startPos = 0;
+						const std::vector<std::string> sublines = TextUtilities::split(result.str, "\n", false);
+						for (const std::string& subline : sublines) {
+							state.lines.emplace_back(UILine::ISSUE, subline);
+						}
 					} else if(result.type == Value::Type::STRING){
 						// This is 'function definition' specific.
 						state.lines.emplace_back( UILine::OUTPUT, result.str);
