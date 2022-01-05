@@ -94,24 +94,11 @@ std::string System::timestamp(){
 	return str.str();
 }
 
-size_t System::getFileSize(const std::string& path){
-	const auto pathW = (path);
-
-	FILE* file = fopen( pathW.c_str(), "rb" );
+bool System::fileExists(const std::string& path){
+	FILE* file = fopen( path.c_str(), "rb" );
 	if(!file) {
-		return 0;
+		return false;
 	}
-
-	if(fseek(file, 0, SEEK_END) != 0) {
-		fclose(file);
-		return 0;
-	}
-
-	size_t size = ftell(file);
 	fclose(file);
-
-	if(size == LONG_MAX) {
-		size = 0;
-	}
-	return size;
+	return true;
 }

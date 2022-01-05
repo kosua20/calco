@@ -21,6 +21,7 @@ public:
 
 	static std::string timestamp();
 
-	static size_t getFileSize(const std::string& path);
+	static bool fileExists(const std::string& path);
 
+	
 };
