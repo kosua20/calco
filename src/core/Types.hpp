@@ -83,7 +83,7 @@ struct Value {
 
 	bool convert(const Type& target, Value& outVal) const;
 
-	std::string toString(Format format, const std::string& multiLinePrefix = "") const;
+	std::string toString(Format format) const;
 
 	Type type;
 	union {

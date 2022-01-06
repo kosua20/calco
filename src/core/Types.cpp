@@ -1,6 +1,6 @@
 #include "core/Types.hpp"
 
-std::string Value::toString(Format format, const std::string& multiLinesPrefix) const {
+std::string Value::toString(Format format) const {
 	const bool internal = format == Format::INTERNAL;
 	const bool rowMajor = (format & Format::MAJOR_MASK) == Format::MAJOR_ROW_FLAG;
 
@@ -78,9 +78,9 @@ std::string Value::toString(Format format, const std::string& multiLinesPrefix) 
 				}
 
 				if(cid < 2){
-					ms.append(internal ? ", " : (" |\n" + multiLinesPrefix + "| "));
+					ms.append(internal ? ", " : (" |\n| "));
 				} else {
-					ms.append(internal ? " )" : " |");
+					ms.append(internal ? " )" : " |");
 				}
 			}
 			return ms;
@@ -100,7 +100,7 @@ std::string Value::toString(Format format, const std::string& multiLinesPrefix) 
 				}
 
 				if(cid < 3){
-					ms.append(internal ? ", " : (" |\n" + multiLinesPrefix + "| "));
+					ms.append(internal ? ", " : (" |\n| "));
 				} else {
 					ms.append(internal ? " )" : " |");
 				}

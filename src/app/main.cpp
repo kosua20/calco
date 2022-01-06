@@ -660,14 +660,27 @@ int main(int argc, char** argv){
 					} else {
 						// Used for copy/paste.
 						const std::string internalStr = result.toString(Format::INTERNAL);
-						state.lines.emplace_back( UILine::OUTPUT, internalStr);
 
 						// Build final display format.
 						const Format tgtFormat = Format((format & Format::BASE_MASK) | (style.displayRowMajor ? Format::MAJOR_ROW_FLAG : Format::MAJOR_COL_FLAG));
-						const std::string externalStr = result.toString(tgtFormat, "  ");
+						const std::string externalStr = result.toString(tgtFormat);
 
-						state.lines.back().words.emplace_back("=", Calculator::Word::OPERATOR);
-						state.lines.back().words.emplace_back(externalStr, Calculator::Word::RESULT);
+						// The message can be multi-lines, split it.
+						const std::vector<std::string> sublines = TextUtilities::split(externalStr, "\n", false);
+						bool first = true;
+						for (const std::string& subline : sublines) {
+							state.lines.emplace_back( UILine::OUTPUT, internalStr);
+							if(first){
+								state.lines.back().words.emplace_back("=", Calculator::Word::OPERATOR);
+								state.lines.back().words.emplace_back(subline, Calculator::Word::RESULT);
+								first = false;
+							} else {
+								state.lines.back().words.emplace_back(" ", Calculator::Word::OPERATOR);
+								state.lines.back().words.emplace_back(subline, Calculator::Word::RESULT);
+							}
+
+						}
+
 					}
 
 				}
