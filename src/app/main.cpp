@@ -552,6 +552,21 @@ int main(int argc, char** argv){
 
 	Calculator calculator;
 	/// TODO: save/restore calculator state (save all internal state + formatted output)
+	std::ifstream historyFile(config.historyPath);
+	if(historyFile.is_open()){
+		std::string elem;
+		historyFile >> elem;
+		if(elem == "UISTATE"){
+			state.loadFromStream(historyFile);
+			historyFile >> elem;
+		}
+		if(elem == "CALCSTATE"){
+			calculator.loadFromStream(historyFile);
+			historyFile >> elem;
+		}
+
+		historyFile.close();
+	}
 
 
 	bool shouldFocusTextField = true;
@@ -784,6 +799,16 @@ int main(int argc, char** argv){
 	}
 	// Save settings.
 	style.saveToFile(config.settingsPath);
+
+	// Save internal state.
+	std::ofstream file(config.historyPath);
+	if(file.is_open()){
+		state.saveToStream(file);
+		calculator.saveToStream(file);
+		file.close();
+	} else {
+		Log::Error() << "Unable to save state to \"" << config.historyPath << "\"" << std::endl;
+	}
 
 	// Cleanup.
 	ImGui_ImplOpenGL3_Shutdown();
