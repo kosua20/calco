@@ -26,15 +26,21 @@ struct UILine {
 		INPUT = 0, OUTPUT, ISSUE, EMPTY, COUNT
 	};
 
+	UILine(){};
+
 	UILine(Type _type, const std::string& _full) : type(_type), fullText(_full) {}
 
 	struct UIWord {
+
+		UIWord(){}
+
 		UIWord(const std::string& _text, Calculator::Word::Type _type) : text(_text), type(_type) {}
+
 		std::string text;
-		Calculator::Word::Type type;
+		Calculator::Word::Type type = Calculator::Word::LITERAL;
 	};
 
-	Type type;
+	Type type = EMPTY;
 	std::vector<UIWord> words;
 	std::string fullText;
 
@@ -147,6 +153,71 @@ struct UIState {
 	int historyPos = -1;
 	std::string textToInsert;
 	bool shouldInsert = false;
+
+	void saveToStream(std::ostream& str){
+		str << "UISTATE" << "\n";
+		str << "LINES " << int(lines.size()) << "\n";
+		for(const auto& line : lines){
+			str << int(line.type) << " " << int(line.words.size()) << "\n";
+			for(const auto& word : line.words){
+				str << int(word.type) << " " << word.text << "\n";
+			}
+			str << line.fullText << "\n";
+		}
+		str << "COMMANDS " << commands.size() << "\n";
+		for(const auto& command : commands){
+			str << command << "\n";
+		}
+	}
+
+	void loadFromStream(std::istream& str){
+		// Assume we just read UISTATE
+		std::string dfltStr;
+		int count = 0;
+
+		str >> dfltStr >> count;
+		assert(dfltStr == "LINES");
+		lines.resize(count);
+
+		for(int i = 0; i < count; ++i){
+
+			int type; int wordCount;
+			str >> type >> wordCount;
+			lines[i].type = UILine::Type(type);
+			lines[i].words.resize(wordCount);
+
+			for(int j = 0; j < wordCount; ++j){
+				str >> type;
+				lines[i].words[j].type = Calculator::Word::Type( type );
+
+				std::getline(str, dfltStr);
+				// Prefix space has not been absorbed.
+				lines[i].words[j].text = dfltStr.substr(1);
+			}
+
+			// Absorb \n
+			if(wordCount == 0){
+				std::getline(str, dfltStr);
+			}
+
+			if(!std::getline(str, lines[i].fullText)){
+				Log::Error() << "Error parsing state lines." << std::endl;
+				return;
+			}
+		}
+
+		str >> dfltStr >> count;
+		assert(dfltStr == "COMMANDS");
+		commands.resize(count);
+		std::getline(str, dfltStr);
+		
+		for(int i = 0; i < count; ++i){
+			if(!std::getline(str, commands[i])){
+				Log::Error() << "Error parsing state commands." << std::endl;
+				return;
+			}
+		}
+	}
 
 };
 
