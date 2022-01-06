@@ -6,13 +6,7 @@
 
 std::string generateErrorLocationMessage(const std::string& input, int start, int size){
 	const std::string errorPointerPadding = (start != 0) ? std::string(start, ' ') : "";
-	std::string errorPointer = "^";
-	if(size > 2){
-		errorPointer.append(std::string(size-2, '-'));
-	}
-	if(size > 1){
-		errorPointer.append("^");
-	}
+	std::string errorPointer = std::string(size, '^');
 
 	std::string errorMessage;// = "around position " + std::to_string(start);
 	errorMessage.append("\n\t");
@@ -199,4 +193,9 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 	}
 
 	return true;
+}
+
+void Calculator::clear(){
+	_globals = Scope();
+	_funcCounter = 0;
 }

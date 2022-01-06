@@ -517,12 +517,19 @@ int main(int argc, char** argv){
 
 				ImGui::Separator();
 
-				if(ImGui::MenuItem("Clear...")){
-					const int result = sr_gui_ask_choice("Calco", "Are you sure you want to clear?",
+				if(ImGui::MenuItem("Clear log...")){
+					const int result = sr_gui_ask_choice("Calco", "Are you sure you want to clear all logged operations?",
 														 SR_GUI_MESSAGE_LEVEL_WARN, "Yes", "No", nullptr);
 					if(result == SR_GUI_BUTTON0){
 						state.lines.clear();
-						// Don't clear commands.
+						state.commands.clear();
+					}
+				}
+				if(ImGui::MenuItem("Clear memory...")){
+					const int result = sr_gui_ask_choice("Calco", "Are you sure you want to clear?",
+														 SR_GUI_MESSAGE_LEVEL_WARN, "Yes", "No", nullptr);
+					if(result == SR_GUI_BUTTON0){
+						calculator.clear();
 					}
 				}
 				ImGui::Separator();

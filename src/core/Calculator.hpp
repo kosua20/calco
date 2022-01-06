@@ -17,6 +17,8 @@ public:
 
 	bool evaluate(const std::string& input, Value& output, std::vector<Word>& info, Format& format);
 
+	void clear();
+	
 private:
 
 	Scope _globals;
