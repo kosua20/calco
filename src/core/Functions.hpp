@@ -20,6 +20,10 @@ public:
 
 	const std::shared_ptr<FunctionDef>& getFunc(const std::string& name) const;
 
+	void saveToStream(std::ostream& str);
+
+	void loadFromStream(std::istream& str, ExpEval& evaluator);
+
 private:
 
 	std::unordered_map<std::string, Value> _variables;

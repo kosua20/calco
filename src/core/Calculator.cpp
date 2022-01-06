@@ -199,3 +199,17 @@ void Calculator::clear(){
 	_globals = Scope();
 	_funcCounter = 0;
 }
+
+void Calculator::saveToStream(std::ostream& str){
+	// Don't need to save funCounter.
+	str << "CALCSTATE" << "\n";
+	_globals.saveToStream(str);
+}
+
+
+void Calculator::loadFromStream(std::istream& str){
+	Scope emptyGlobal;
+	ExpEval sharedEval(emptyGlobal, _stdlib);
+	// Assume CALCSTATE has just been read.
+	_globals.loadFromStream(str, sharedEval);
+}

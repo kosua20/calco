@@ -19,6 +19,9 @@ public:
 
 	void clear();
 	
+	void saveToStream(std::ostream& str);
+	void loadFromStream(std::istream& str);
+
 private:
 
 	Scope _globals;
