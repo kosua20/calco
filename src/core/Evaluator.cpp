@@ -596,35 +596,37 @@ Value ExpEval::process(const Member& exp) {
 
 	switch (par.type) {
 		case Value::VEC3:
+			using v3t = glm::vec3::length_type;
 			if(getSize == 1){
-				return par.v3[indices[0]];
+				return par.v3[(v3t)indices[0]];
 			}
 			if(getSize == 3){
-				return glm::vec3(par.v3[indices[0]], par.v3[indices[1]], par.v3[indices[2]]);
+				return glm::vec3(par.v3[(v3t)indices[0]], par.v3[(v3t)indices[1]], par.v3[(v3t)indices[2]]);
 			}
 			if(getSize == 4){
-				return glm::vec4(par.v3[indices[0]], par.v3[indices[1]], par.v3[indices[2]], par.v3[indices[3]]);
+				return glm::vec4(par.v3[(v3t)indices[0]], par.v3[(v3t)indices[1]], par.v3[(v3t)indices[2]], par.v3[(v3t)indices[3]]);
 			}
 			break;
 		case Value::VEC4:
+			using v4t = glm::vec4::length_type;
 			if(getSize == 1){
-				return par.v4[indices[0]];
+				return par.v4[(v4t)indices[0]];
 			}
 			if(getSize == 3){
-				return glm::vec3(par.v4[indices[0]], par.v4[indices[1]], par.v4[indices[2]]);
+				return glm::vec3(par.v4[(v4t)indices[0]], par.v4[(v4t)indices[1]], par.v4[(v4t)indices[2]]);
 			}
 			if(getSize == 4){
-				return glm::vec4(par.v4[indices[0]], par.v4[indices[1]], par.v4[indices[2]], par.v4[indices[3]]);
+				return glm::vec4(par.v4[(v4t)indices[0]], par.v4[(v4t)indices[1]], par.v4[(v4t)indices[2]], par.v4[(v4t)indices[3]]);
 			}
 			break;
 		case Value::MAT3:
 			if(getSize == 1){
-				return par.m3[indices[0]];
+				return par.m3[(glm::mat3::length_type)indices[0]];
 			}
 			break;
 		case Value::MAT4:
 			if(getSize == 1){
-				return par.m4[indices[0]];
+				return par.m4[(glm::mat4::length_type)indices[0]];
 			}
 			break;
 		default:
