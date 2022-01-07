@@ -28,78 +28,6 @@ const std::shared_ptr<FunctionDef>& Scope::getFunc(const std::string& name) cons
 	return _functions.at(name);
 }
 
-void Scope::saveToStream(std::ostream& str){
-	str << "VARIABLES " << int(_variables.size()) << "\n";
-	for(const auto& variable : _variables){
-		str << variable.first << " = " << variable.second.toString(Format::INTERNAL) << "\n";
-	}
-	str << "FUNCTIONS " << int(_functions.size()) << "\n";
-	ExpLogger logger;
-	for(const auto& function : _functions){
-		str << function.second->evaluate(logger).str << "\n";
-	}
-}
-
-void Scope::loadFromStream(std::istream& str, ExpEval& evaluator){
-	std::string dfltStr;
-	int count;
-	str >> dfltStr >> count;
-	assert(dfltStr == "VARIABLES");
-	_variables.reserve(count);
-	std::getline(str, dfltStr);
-
-	for(int i = 0; i < count; ++i){
-		std::string varExp;
-		std::getline(str, varExp);
-
-		Scanner scanner(varExp);
-		const Status scanResult = scanner.scan();
-		if(!scanResult){
-			continue;
-		}
-		// Build the AST
-		Parser parser(scanner.tokens());
-		const Status parseResult = parser.parse();
-		if(!parseResult){
-			continue;
-		}
-
-		auto varDef = std::dynamic_pointer_cast<VariableDef>(parser.tree());
-		Value outValue;
-		const Status evalResult = varDef->expr->evaluate(evaluator, outValue);
-
-		if(evalResult.success){
-			setVar(varDef->name, outValue);
-		}
-	}
-
-	str >> dfltStr >> count;
-	assert(dfltStr == "FUNCTIONS");
-	_functions.reserve(count);
-	std::getline(str, dfltStr);
-	for(int i = 0; i < count; ++i){
-		std::string funcExpr;
-		std::getline(str, funcExpr);
-
-		Scanner scanner(funcExpr);
-		const Status scanResult = scanner.scan();
-		if(!scanResult){
-			continue;
-		}
-		// Build the AST
-		Parser parser(scanner.tokens());
-		const Status parseResult = parser.parse();
-		if(!parseResult){
-			continue;
-		}
-
-		auto funDef = std::dynamic_pointer_cast<FunctionDef>(parser.tree());
-		setFunc(funDef->name, funDef);
-
-	}
-}
-
-
 #define EXIT(msg) evaluator.registerError(msg, nullptr); return false;
 
 bool allArgs(const std::vector<Value>& args, Value::Type type){
@@ -590,7 +518,7 @@ Value FunctionsLibrary::funcInversesqrt(const std::vector<Value>& args, ExpEval&
 	assert(args.size() == 1);
 	switch(args[0].type){
 		case Value::INTEGER:
-			return glm::inversesqrt(args[0].i);
+			return glm::inversesqrt(double(args[0].i));
 		case Value::FLOAT:
 			return glm::inversesqrt(args[0].f);
 		case Value::VEC3:

@@ -8,6 +8,9 @@ class ExpEval;
 class Scope {
 public:
 
+	using VariableList = std::unordered_map<std::string, Value>;
+	using FunctionList = std::unordered_map<std::string, std::shared_ptr<FunctionDef>>;
+
 	void setVar(const std::string& name, const Value& value);
 
 	bool hasVar(const std::string& name) const;
@@ -20,15 +23,14 @@ public:
 
 	const std::shared_ptr<FunctionDef>& getFunc(const std::string& name) const;
 
-	void saveToStream(std::ostream& str);
+	const VariableList& getVars() const { return _variables; }
 
-	void loadFromStream(std::istream& str, ExpEval& evaluator);
+	const FunctionList& getFuncs() const { return _functions; }
 
 private:
 
-	std::unordered_map<std::string, Value> _variables;
-
-	std::unordered_map<std::string, std::shared_ptr<FunctionDef>> _functions;
+	VariableList _variables;
+	FunctionList _functions;
 
 };
 

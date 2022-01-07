@@ -19,7 +19,7 @@ public:
 
 	void clear();
 	
-	void saveToStream(std::ostream& str);
+	void saveToStream(std::ostream& str) const;
 	void loadFromStream(std::istream& str);
 
 private:

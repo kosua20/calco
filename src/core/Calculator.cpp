@@ -200,16 +200,83 @@ void Calculator::clear(){
 	_funcCounter = 0;
 }
 
-void Calculator::saveToStream(std::ostream& str){
+void Calculator::saveToStream(std::ostream& str) const {
 	// Don't need to save funCounter.
+	const auto& variables = _globals.getVars();
+	const auto& functions = _globals.getFuncs();
+
 	str << "CALCSTATE" << "\n";
-	_globals.saveToStream(str);
+	str << "VARIABLES " << int(variables.size()) << "\n";
+	for (const auto& variable : variables) {
+		str << variable.first << " = " << variable.second.toString(Format::INTERNAL) << "\n";
+	}
+	str << "FUNCTIONS " << int(functions.size()) << "\n";
+	ExpLogger logger;
+	for (const auto& function : functions) {
+		str << function.second->evaluate(logger).str << "\n";
+	}
 }
 
 
 void Calculator::loadFromStream(std::istream& str){
 	Scope emptyGlobal;
 	ExpEval sharedEval(emptyGlobal, _stdlib);
+
 	// Assume CALCSTATE has just been read.
-	_globals.loadFromStream(str, sharedEval);
+	std::string dfltStr;
+	int count;
+	str >> dfltStr >> count;
+	assert(dfltStr == "VARIABLES");
+	_variables.reserve(count);
+	std::getline(str, dfltStr);
+
+	for (int i = 0; i < count; ++i) {
+		std::string varExp;
+		std::getline(str, varExp);
+
+		Scanner scanner(varExp);
+		const Status scanResult = scanner.scan();
+		if (!scanResult) {
+			continue;
+		}
+		// Build the AST
+		Parser parser(scanner.tokens());
+		const Status parseResult = parser.parse();
+		if (!parseResult) {
+			continue;
+		}
+
+		auto varDef = std::dynamic_pointer_cast<VariableDef>(parser.tree());
+		Value outValue;
+		const Status evalResult = varDef->expr->evaluate(sharedEval, outValue);
+
+		if (evalResult.success) {
+			_globals.setVar(varDef->name, outValue);
+		}
+	}
+
+	str >> dfltStr >> count;
+	assert(dfltStr == "FUNCTIONS");
+	_functions.reserve(count);
+	std::getline(str, dfltStr);
+	for (int i = 0; i < count; ++i) {
+		std::string funcExpr;
+		std::getline(str, funcExpr);
+
+		Scanner scanner(funcExpr);
+		const Status scanResult = scanner.scan();
+		if (!scanResult) {
+			continue;
+		}
+		// Build the AST
+		Parser parser(scanner.tokens());
+		const Status parseResult = parser.parse();
+		if (!parseResult) {
+			continue;
+		}
+
+		auto funDef = std::dynamic_pointer_cast<FunctionDef>(parser.tree());
+		_globals.setFunc(funDef->name, funDef);
+
+	}
 }
