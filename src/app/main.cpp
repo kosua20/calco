@@ -385,7 +385,7 @@ int printLines(const std::vector<UILine>& lines, const UIStyle &style, bool sele
 
 	const size_t lineCount = lines.size();
 	ImGuiListClipper clipper;
-	clipper.Begin(lineCount, ImGui::GetTextLineHeightWithSpacing());
+	clipper.Begin(int(lineCount), ImGui::GetTextLineHeightWithSpacing());
 
 	while (clipper.Step()) {
 		for (int lid = clipper.DisplayStart; lid < clipper.DisplayEnd; ++lid) {
@@ -730,6 +730,7 @@ int main(int argc, char** argv){
 					for(const Calculator::Word& word : wordInfos){
 						line.words.emplace_back(newLine.substr(word.location, word.size), word.type);
 					}
+
 					// Handle error that happened before syntax info generation.
 					if(wordInfos.empty()){
 						line.words.emplace_back(newLine, Calculator::Word::LITERAL);
@@ -751,6 +752,7 @@ int main(int argc, char** argv){
 						state.lines.back().words.emplace_back(" defined", Calculator::Word::LITERAL);
 
 					} else {
+						
 						// Used for copy/paste.
 						const std::string internalStr = result.toString(Format::INTERNAL);
 
@@ -761,17 +763,12 @@ int main(int argc, char** argv){
 						// The message can be multi-lines, split it.
 						const std::vector<std::string> sublines = TextUtilities::split(externalStr, "\n", false);
 						bool first = true;
+						
 						for (const std::string& subline : sublines) {
 							state.lines.emplace_back( UILine::OUTPUT, internalStr);
-							if(first){
-								state.lines.back().words.emplace_back("=", Calculator::Word::OPERATOR);
-								state.lines.back().words.emplace_back(subline, Calculator::Word::RESULT);
-								first = false;
-							} else {
-								state.lines.back().words.emplace_back(" ", Calculator::Word::OPERATOR);
-								state.lines.back().words.emplace_back(subline, Calculator::Word::RESULT);
-							}
-
+							state.lines.back().words.emplace_back(first ? "=" : " ", Calculator::Word::OPERATOR);
+							state.lines.back().words.emplace_back(subline, Calculator::Word::RESULT);
+							first = false;
 						}
 
 					}

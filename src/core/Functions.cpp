@@ -33,7 +33,7 @@ void Scope::saveToStream(std::ostream& str){
 	for(const auto& variable : _variables){
 		str << variable.first << " = " << variable.second.toString(Format::INTERNAL) << "\n";
 	}
-	str << "FUNCTIONS  " << int(_functions.size()) << "\n";
+	str << "FUNCTIONS " << int(_functions.size()) << "\n";
 	ExpLogger logger;
 	for(const auto& function : _functions){
 		str << function.second->evaluate(logger).str << "\n";

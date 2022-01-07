@@ -79,6 +79,7 @@ Status Scanner::scan(){
 		if((c0 >= '0' && c0 <= '9') || (c0 == '.' && !isMember && (c1 >= '0' && c1 <= '9'))){
 			int base = 10;
 			bool isFloat = false;
+			bool skipLetter = false;
 
 			// Leading 0 == non decimal base.
 			if(c0 == '0' && c1 != '.'){
@@ -86,6 +87,7 @@ Status Scanner::scan(){
 					// Hexa
 					base = 16;
 					position += 2;
+					skipLetter = true;
 					// Read hexa
 					while(isHexaDigitAt(position)){
 						++position;
@@ -94,6 +96,7 @@ Status Scanner::scan(){
 					// Binary
 					base = 2;
 					position += 2;
+					skipLetter = true;
 					// Read bin
 					while(isBinDigitAt(position)){
 						++position;
@@ -102,6 +105,11 @@ Status Scanner::scan(){
 					// Octal, same trap as in C
 					base = 8;
 					position += 1;
+					skipLetter = c1 == 'o';
+					// Optional o marker.
+					if(skipLetter){
+						position += 1;
+					}
 					// Read octal
 					while(isOctaDigitAt(position)){
 						++position;
@@ -134,7 +142,7 @@ Status Scanner::scan(){
 			}
 			// Read the number.
 			const size_t tokenSize = position - startPosition;
-			const std::string number = _input.substr(startPosition, tokenSize);
+			std::string number = _input.substr(startPosition, tokenSize);
 
 
 			try {
@@ -147,6 +155,9 @@ Status Scanner::scan(){
 					_tokens.back().location = startPosition;
 					_tokens.back().size = long(tokenSize);
 				} else {
+					if (skipLetter) {
+						number = number.substr(2);
+					}
 					const long long val = std::stoll(number, nullptr, base);
 					// Only emplace once the conversion has succeeded.
 					_tokens.emplace_back();
