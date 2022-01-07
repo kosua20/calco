@@ -607,6 +607,30 @@ int main(int argc, char** argv){
 
 		shouldFocusTextField = false;
 
+		if (ImGui::Begin("Functions")) {
+			ImGui::BeginTable("##FunctionsTable", 2, ImGuiTableFlags_Borders);
+			for (const auto& func : calculator.functions()) {
+				ImGui::TableNextColumn();
+				ImGui::Text(func.second.first.c_str());
+				ImGui::TableNextColumn();
+				ImGui::Text(func.second.second.c_str());
+			}
+			ImGui::EndTable();
+		}
+		ImGui::End();
+
+		if (ImGui::Begin("Variables")) {
+			ImGui::BeginTable("##VariablesTable", 2, ImGuiTableFlags_Borders);
+			for (const auto& var : calculator.variables()) {
+				ImGui::TableNextColumn();
+				ImGui::Text(var.first.c_str());
+				ImGui::TableNextColumn();
+				ImGui::Text(var.second.c_str());
+			}
+			ImGui::EndTable();
+		}
+		ImGui::End();
+
 		// Render the interface.
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

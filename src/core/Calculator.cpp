@@ -107,11 +107,15 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 		const Status evalResult = varDef->expr->evaluate(evaluator, outValue);
 
 		if(evalResult.success){
+
 			format = evaluator.getFormat();
 			// Store result in global scope.
 			_globals.setVar(varDef->name, outValue);
 			_globals.setVar("ans", outValue);
 			output = outValue;
+
+			// Register function name for display.
+			_variables[varDef->name] = outValue.toString(Format::INTERNAL);
 			return true;
 
 		} else {
@@ -129,6 +133,7 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 		}
 
 	} else if(auto funDef = std::dynamic_pointer_cast<FunctionDef>(parser.tree())){
+		// Build representation before substitution.
 
 		// Build unique name for all arguments.
 		const std::string suffix = "_" + funDef->name + "_" + std::to_string(_funcCounter);
@@ -144,6 +149,15 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 		}
 
 		if(evalResult.success){
+			// Register function name for display.
+			const std::string::size_type splitPos = cleanInput.find('=');
+			if (splitPos != std::string::npos) {
+				const std::string nameWithArgs = TextUtilities::trim(cleanInput.substr(0, splitPos), " ");
+				const std::string baseName = nameWithArgs.substr(0, nameWithArgs.find('('));
+				const std::string expression   = TextUtilities::trim(cleanInput.substr(splitPos+1), " ");
+				_functions[baseName] = std::make_pair(nameWithArgs, expression);
+			}
+
 			// Store flattened function in global scope.
 			_globals.setFunc(funDef->name, funDef);
 			output = funDef->name;
@@ -172,6 +186,7 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 			format = evaluator.getFormat();
 			// Update ans variable with the last result.
 			_globals.setVar("ans", outValue);
+			_variables["ans"] = outValue.toString(Format::INTERNAL);
 			output = outValue;
 			return true;
 
@@ -198,6 +213,8 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 void Calculator::clear(){
 	_globals = Scope();
 	_funcCounter = 0;
+	_functions.clear();
+	_variables.clear();
 }
 
 void Calculator::saveToStream(std::ostream& str) const {
@@ -278,5 +295,42 @@ void Calculator::loadFromStream(std::istream& str){
 		auto funDef = std::dynamic_pointer_cast<FunctionDef>(parser.tree());
 		_globals.setFunc(funDef->name, funDef);
 
+	}
+	/// TODO: Register all variables
+	for (const auto& variable : _globals.getVars()) {
+		_variables[variable.first] = variable.second.toString(BASE_10_FLAG);
+	}
+
+	/// TODO: Register all functions.
+	ExpLogger logger;
+	for (const auto& function : _globals.getFuncs()) {
+		const std::string exp = function.second->evaluate(logger).str;
+		const std::string::size_type splitPos = exp.find('=');
+
+		std::string expression = TextUtilities::trim(exp.substr(splitPos + 1), " ");
+
+		std::string name = TextUtilities::trim(exp.substr(0, splitPos), " ");
+		const std::string::size_type parenthPos = name.find('(');
+		const std::string argsPacked = name.substr(parenthPos + 1, name.find(')') - 1 - parenthPos);
+		const auto args = TextUtilities::split(argsPacked, ",", true);
+
+		// Trim name
+		/// TODO: store arguments separately to handle replacement properly
+		std::string baseName = name.substr(0, parenthPos);
+		name = baseName + "(";
+		bool first = true;
+		for(const auto& arg : args) {
+			const std::string cleanArg = TextUtilities::trim(arg, " ");
+			std::string::size_type pos = cleanArg.find_last_of('_');
+			pos = cleanArg.find_last_of('_', pos-1);
+			const std::string finalArg = cleanArg.substr(0, pos);
+
+			TextUtilities::replace(expression, cleanArg, finalArg);
+			
+			name += (first ? "" : ", ") + finalArg;
+			first = false;
+		}
+		name += ")";
+		_functions[baseName] = std::make_pair(name, expression);
 	}
 }
