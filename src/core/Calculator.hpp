@@ -20,6 +20,7 @@ public:
 	void clear();
 	
 	void saveToStream(std::ostream& str) const;
+	
 	void loadFromStream(std::istream& str);
 
 	const std::unordered_map<std::string, std::pair<std::string, std::string>>& functions() const { return _functions; }

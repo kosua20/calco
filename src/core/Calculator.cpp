@@ -150,13 +150,21 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 
 		if(evalResult.success){
 			// Register function name for display.
-			const std::string::size_type splitPos = cleanInput.find('=');
-			if (splitPos != std::string::npos) {
-				const std::string nameWithArgs = TextUtilities::trim(cleanInput.substr(0, splitPos), " ");
-				const std::string baseName = nameWithArgs.substr(0, nameWithArgs.find('('));
-				const std::string expression   = TextUtilities::trim(cleanInput.substr(splitPos+1), " ");
-				_functions[baseName] = std::make_pair(nameWithArgs, expression);
+			{
+				ExpLogger logger;
+				const std::string& baseName = funDef->name;
+				std::string expr = funDef->expr->evaluate(logger).str;
+				std::string fullName = baseName + "(";
+				bool first = true;
+				for(const auto& arg : funDef->args){
+					const std::string shortArg = arg.substr(0, arg.find_last_of('@'));
+					TextUtilities::replace(expr, arg, shortArg);
+					fullName += (first ? "" : ",") + shortArg;
+				}
+				fullName += ")";
+				_functions[baseName] = std::make_pair(fullName, expr);
 			}
+
 
 			// Store flattened function in global scope.
 			_globals.setFunc(funDef->name, funDef);
@@ -304,33 +312,19 @@ void Calculator::loadFromStream(std::istream& str){
 	/// TODO: Register all functions.
 	ExpLogger logger;
 	for (const auto& function : _globals.getFuncs()) {
-		const std::string exp = function.second->evaluate(logger).str;
-		const std::string::size_type splitPos = exp.find('=');
+		const std::string& baseName = function.second->name;
 
-		std::string expression = TextUtilities::trim(exp.substr(splitPos + 1), " ");
+		std::string expr = function.second->expr->evaluate(logger).str;
 
-		std::string name = TextUtilities::trim(exp.substr(0, splitPos), " ");
-		const std::string::size_type parenthPos = name.find('(');
-		const std::string argsPacked = name.substr(parenthPos + 1, name.find(')') - 1 - parenthPos);
-		const auto args = TextUtilities::split(argsPacked, ",", true);
-
-		// Trim name
-		/// TODO: store arguments separately to handle replacement properly
-		std::string baseName = name.substr(0, parenthPos);
-		name = baseName + "(";
+		std::string fullName = baseName + "(";
 		bool first = true;
-		for(const auto& arg : args) {
-			const std::string cleanArg = TextUtilities::trim(arg, " ");
-			std::string::size_type pos = cleanArg.find_last_of('_');
-			pos = cleanArg.find_last_of('_', pos-1);
-			const std::string finalArg = cleanArg.substr(0, pos);
-
-			TextUtilities::replace(expression, cleanArg, finalArg);
-			
-			name += (first ? "" : ", ") + finalArg;
-			first = false;
+		for(const auto& arg : function.second->args){
+			const std::string shortArg = arg.substr(0, arg.find_last_of('@'));
+			TextUtilities::replace(expr, arg, shortArg);
+			fullName += (first ? "" : ",") + shortArg;
 		}
-		name += ")";
-		_functions[baseName] = std::make_pair(name, expression);
+		fullName += ")";
+
+		_functions[baseName] = std::make_pair(fullName, expr);
 	}
 }
