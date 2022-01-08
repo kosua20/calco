@@ -44,6 +44,8 @@ public:
 
 	Value eval(const std::string& name, const std::vector<Value>& args, ExpEval& evaluator);
 
+	void populateDescriptions(std::unordered_map<std::string, std::string>& list) const;
+
 private:
 	
 	Value funcClamp(const std::vector<Value>& args, ExpEval& evaluator, const std::string& name);

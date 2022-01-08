@@ -1224,3 +1224,10 @@ bool FunctionsLibrary::validArgCount(const std::string& name, size_t argCount) c
 Value FunctionsLibrary::eval(const std::string& name, const std::vector<Value>& args, ExpEval& evaluator) {
 	return (this->*(_funcMap.at(name).call))(args, evaluator, name);
 }
+
+void FunctionsLibrary::populateDescriptions(std::unordered_map<std::string, std::string>& list) const {
+	list.clear();
+	list.reserve(_funcMap.size());
+	for(const auto& func : _funcMap){
+	}
+}

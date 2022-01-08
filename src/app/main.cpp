@@ -607,13 +607,15 @@ int main(int argc, char** argv){
 
 		shouldFocusTextField = false;
 
+		/// TODO: proper column sizing, bg color, sorting?, clicking on row to paste name/call, format settings for variables
+		///
 		if (ImGui::Begin("Functions")) {
 			ImGui::BeginTable("##FunctionsTable", 2, ImGuiTableFlags_Borders);
 			for (const auto& func : calculator.functions()) {
 				ImGui::TableNextColumn();
-				ImGui::Text(func.second.first.c_str());
+				ImGui::TextUnformatted(func.second.name.c_str());
 				ImGui::TableNextColumn();
-				ImGui::Text(func.second.second.c_str());
+				ImGui::TextUnformatted(func.second.expression.c_str());
 			}
 			ImGui::EndTable();
 		}
@@ -623,9 +625,21 @@ int main(int argc, char** argv){
 			ImGui::BeginTable("##VariablesTable", 2, ImGuiTableFlags_Borders);
 			for (const auto& var : calculator.variables()) {
 				ImGui::TableNextColumn();
-				ImGui::Text(var.first.c_str());
+				ImGui::TextUnformatted(var.first.c_str());
 				ImGui::TableNextColumn();
-				ImGui::Text(var.second.c_str());
+				ImGui::TextUnformatted(var.second.c_str());
+			}
+			ImGui::EndTable();
+		}
+		ImGui::End();
+
+		if (ImGui::Begin("Library")) {
+			ImGui::BeginTable("##LibTable", 2, ImGuiTableFlags_Borders);
+			for (const auto& func : calculator.stdlib()) {
+				ImGui::TableNextColumn();
+				ImGui::TextUnformatted(func.second.name.c_str());
+				ImGui::TableNextColumn();
+				ImGui::TextUnformatted(func.second.expression.c_str());
 			}
 			ImGui::EndTable();
 		}

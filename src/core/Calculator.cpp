@@ -4,6 +4,43 @@
 #include "core/Evaluator.hpp"
 #include "core/system/TextUtilities.hpp"
 
+void Documentation::setVar(const std::string& name, const Value& value){
+	_variables[name] = value.toString(_format);
+}
+
+void Documentation::setFunc(const std::string& name, const std::shared_ptr<FunctionDef>& def){
+
+	ExpLogger logger;
+	// Generate expression.
+	std::string expr = def->expr->evaluate(logger).str;
+	// Generate name with arguments, removing internal identifiers.
+	std::string fullName = def->name + "(";
+	bool first = true;
+	for(const auto& arg : def->args){
+		const std::string shortArg = arg.substr(0, arg.find_last_of('@'));
+		TextUtilities::replace(expr, arg, shortArg);
+		fullName += (first ? "" : ", ") + shortArg;
+		first = false;
+	}
+	fullName += ")";
+
+	_functions[name] = { fullName, expr };
+}
+
+void Documentation::setLibrary(const FunctionsLibrary& library){
+	std::unordered_map<std::string, std::string> funcList;
+	library.populateDescriptions(funcList);
+	for(const auto& func : funcList){
+		_stdlib[func.first] = {func.first, func.second};
+	}
+}
+
+void Documentation::clear(){
+	_variables.clear();
+	_functions.clear();
+	// Never clear the stdlib.
+}
+
 std::string generateErrorLocationMessage(const std::string& input, int start, int size){
 	const std::string errorPointerPadding = (start != 0) ? std::string(start, ' ') : "";
 	std::string errorPointer = std::string(size, '^');
@@ -20,6 +57,11 @@ std::string logTree(const Expression::Ptr& exp ){
 	ExpLogger logger;
 	Value finalStr = exp->evaluate(logger);
 	return finalStr.str;
+}
+
+
+Calculator::Calculator(){
+	_doc.setLibrary(_stdlib);
 }
 
 bool Calculator::evaluate(const std::string& input, Value& output, std::vector<Word>& infos, Format& format){
@@ -114,8 +156,9 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 			_globals.setVar("ans", outValue);
 			output = outValue;
 
-			// Register function name for display.
-			_variables[varDef->name] = outValue.toString(Format::INTERNAL);
+			// Register variable name for display.
+			_doc.setVar(varDef->name, outValue);
+			_doc.setVar("ans", outValue);
 			return true;
 
 		} else {
@@ -133,7 +176,6 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 		}
 
 	} else if(auto funDef = std::dynamic_pointer_cast<FunctionDef>(parser.tree())){
-		// Build representation before substitution.
 
 		// Build unique name for all arguments.
 		const std::string suffix = "@" + funDef->name + "_" + std::to_string(_funcCounter);
@@ -149,28 +191,15 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 		}
 
 		if(evalResult.success){
-			// Register function name for display.
-			{
-				ExpLogger logger;
-				const std::string& baseName = funDef->name;
-				std::string expr = funDef->expr->evaluate(logger).str;
-				std::string fullName = baseName + "(";
-				bool first = true;
-				for(const auto& arg : funDef->args){
-					const std::string shortArg = arg.substr(0, arg.find_last_of('@'));
-					TextUtilities::replace(expr, arg, shortArg);
-					fullName += (first ? "" : ",") + shortArg;
-				}
-				fullName += ")";
-				_functions[baseName] = std::make_pair(fullName, expr);
-			}
-
 
 			// Store flattened function in global scope.
 			_globals.setFunc(funDef->name, funDef);
 			output = funDef->name;
 			++_funcCounter;
 
+			// Register function name for display.
+			_doc.setFunc(funDef->name, funDef);
+			return true;
 		} else {
 			output = "Evaluation: " + evalResult.message + " ";
 
@@ -194,7 +223,7 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 			format = evaluator.getFormat();
 			// Update ans variable with the last result.
 			_globals.setVar("ans", outValue);
-			_variables["ans"] = outValue.toString(Format::INTERNAL);
+			_doc.setVar("ans", outValue);
 			output = outValue;
 			return true;
 
@@ -221,8 +250,23 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 void Calculator::clear(){
 	_globals = Scope();
 	_funcCounter = 0;
-	_functions.clear();
-	_variables.clear();
+	_doc.clear();
+}
+
+void Calculator::updateDocumentation(Format format){
+	_doc.setFormat(format);
+	// Should we clear first?
+	// _doc.clear();
+
+	/// Register all variables
+	for (const auto& variable : _globals.getVars()) {
+		_doc.setVar(variable.first, variable.second);
+	}
+
+	/// Register all functions.
+	for (const auto& function : _globals.getFuncs()) {
+		_doc.setFunc(function.first, function.second);
+	}
 }
 
 void Calculator::saveToStream(std::ostream& str) const {
@@ -252,7 +296,6 @@ void Calculator::loadFromStream(std::istream& str){
 	int count;
 	str >> dfltStr >> count;
 	assert(dfltStr == "VARIABLES");
-	_variables.reserve(count);
 	std::getline(str, dfltStr);
 
 	for (int i = 0; i < count; ++i) {
@@ -282,7 +325,6 @@ void Calculator::loadFromStream(std::istream& str){
 
 	str >> dfltStr >> count;
 	assert(dfltStr == "FUNCTIONS");
-	_functions.reserve(count);
 	std::getline(str, dfltStr);
 	for (int i = 0; i < count; ++i) {
 		std::string funcExpr;
@@ -304,27 +346,6 @@ void Calculator::loadFromStream(std::istream& str){
 		_globals.setFunc(funDef->name, funDef);
 
 	}
-	/// TODO: Register all variables
-	for (const auto& variable : _globals.getVars()) {
-		_variables[variable.first] = variable.second.toString(BASE_10_FLAG);
-	}
 
-	/// TODO: Register all functions.
-	ExpLogger logger;
-	for (const auto& function : _globals.getFuncs()) {
-		const std::string& baseName = function.second->name;
-
-		std::string expr = function.second->expr->evaluate(logger).str;
-
-		std::string fullName = baseName + "(";
-		bool first = true;
-		for(const auto& arg : function.second->args){
-			const std::string shortArg = arg.substr(0, arg.find_last_of('@'));
-			TextUtilities::replace(expr, arg, shortArg);
-			fullName += (first ? "" : ",") + shortArg;
-		}
-		fullName += ")";
-
-		_functions[baseName] = std::make_pair(fullName, expr);
-	}
+	updateDocumentation(_doc.format());
 }
