@@ -26,6 +26,11 @@ enum class Operator {
 static const std::unordered_map<std::string, double> MathConstants = {
 	{"pi", glm::pi<double>() },
 	{"deg",  glm::pi<double>() / 180.0 },
+	{"gold_ratio",  glm::golden_ratio<double>() },
+	{"euler", 2.71828182845904523536},
+	{"light_speed", 299792458.0},
+	{"gravity", 9.80665},
+	{"elem_charge", 1.6021766208e-19} // dubious precision
 };
 
 inline std::string OperatorString(Operator op){

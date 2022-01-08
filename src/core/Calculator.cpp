@@ -40,6 +40,10 @@ void Documentation::setLibrary(const FunctionsLibrary& library){
 	for(const auto& func : funcList){
 		_stdlib[func.first] = {func.first, func.second};
 	}
+	// Also do constants here.
+	for(const auto& constant : MathConstants){
+		_constants[constant.first] = {std::to_string(constant.second), 1};
+	}
 }
 
 void Documentation::clear(){

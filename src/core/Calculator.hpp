@@ -29,6 +29,8 @@ public:
 	const Functions& functions() const { return _functions; }
 	const Functions& stdlib() const { return _stdlib; }
 	const Variables& variables() const { return _variables; }
+	const Variables& constants() const { return _constants; }
+
 	Format format() const { return _format; }
 	
 	void clear();
@@ -38,6 +40,7 @@ private:
 	Functions _functions;
 	Functions _stdlib;
 	Variables _variables;
+	Variables _constants;
 
 	Format _format = Format::BASE_10_FLAG;
 };
@@ -70,6 +73,7 @@ public:
 	const Documentation::Functions& functions() const { return _doc.functions(); }
 	const Documentation::Functions& stdlib() const { return _doc.stdlib(); }
 	const Documentation::Variables& variables() const { return _doc.variables(); }
+	const Documentation::Variables& constants() const { return _doc.constants(); }
 
 private:
 

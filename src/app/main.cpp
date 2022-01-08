@@ -444,10 +444,10 @@ int main(int argc, char** argv){
 				ImGui::EndMenu();
 			}
 
-			if(ImGui::BeginMenu("Window")){
+			if(ImGui::BeginMenu("View")){
 				ImGui::MenuItem("Functions", nullptr, &state.showFunctions, true);
-				ImGui::MenuItem("Library", nullptr, &state.showLibrary, true);
 				ImGui::MenuItem("Variables", nullptr, &state.showVariables, true);
+				ImGui::MenuItem("Library", nullptr, &state.showLibrary, true);
 				ImGui::EndMenu();
 			}
 
@@ -691,28 +691,65 @@ int main(int argc, char** argv){
 		if(state.showLibrary){
 			ImGui::SetNextWindowSize(outerSize, ImGuiCond_Once);
 			ImGui::SetNextWindowSizeConstraints(ImVec2(outerSize.x, 0), ImVec2(outerSize.x, FLT_MAX));
-			if (ImGui::Begin("Library", &state.showLibrary, panelFlags)) {
+			if(ImGui::Begin("Library", &state.showLibrary, panelFlags)) {
 
 				const ImVec2 innerSize(ImGui::GetWindowSize().x - 25, 0);
-				
-				if(ImGui::BeginTable("##LibTable", 2, tableFlags, innerSize)){
-					ImGui::TableSetupColumn("Name");
-					ImGui::TableSetupColumn("Parameters");
-					ImGui::TableHeadersRow();
-					for (const auto& func : calculator.stdlib()) {
-						ImGui::TableNextColumn();
 
-						if (ImGui::Selectable(func.second.name.c_str(), false, selectFlags, ImVec2(0, baseHeight))){
-							// Register text to insert, will be done in the text field conitnuous callback.
-							state.shouldInsert = true;
-							state.textToInsert = func.second.name + "()";
-							shouldFocusTextField = true;
+				if(ImGui::BeginTabBar("Library elements")) {
+
+					if(ImGui::BeginTabItem("Functions")) {
+
+						if(ImGui::BeginTable("##LibTableFunctions", 2, tableFlags, innerSize)){
+							ImGui::TableSetupColumn("Name");
+							ImGui::TableSetupColumn("Parameters");
+							ImGui::TableHeadersRow();
+							for (const auto& func : calculator.stdlib()) {
+								ImGui::TableNextColumn();
+
+								if (ImGui::Selectable(func.second.name.c_str(), false, selectFlags, ImVec2(0, baseHeight))){
+									// Register text to insert, will be done in the text field conitnuous callback.
+									state.shouldInsert = true;
+									state.textToInsert = func.second.name + "()";
+									shouldFocusTextField = true;
+								}
+								ImGui::TableNextColumn();
+								ImGui::TextUnformatted(func.second.expression.c_str());
+							}
+							ImGui::EndTable();
 						}
-						ImGui::TableNextColumn();
-						ImGui::TextUnformatted(func.second.expression.c_str());
+
+						ImGui::EndTabItem();
 					}
-					ImGui::EndTable();
+
+					if(ImGui::BeginTabItem("Constants")) {
+
+						if(ImGui::BeginTable("##ConstantTable", 2, tableFlags, innerSize)){
+							ImGui::TableSetupColumn("Name");
+							ImGui::TableSetupColumn("Value");
+							ImGui::TableHeadersRow();
+
+							for (const auto& var : calculator.constants()) {
+								ImGui::TableNextColumn();
+
+								const float rowHeight = var.second.count * baseHeight;
+								if (ImGui::Selectable(var.first.c_str(), false, selectFlags, ImVec2(0, rowHeight))){
+									state.shouldInsert = true;
+									state.textToInsert = var.first;
+									shouldFocusTextField = true;
+								}
+
+								ImGui::TableNextColumn();
+								ImGui::TextUnformatted(var.second.value.c_str());
+							}
+							ImGui::EndTable();
+						}
+
+						ImGui::EndTabItem();
+					}
+					ImGui::EndTabBar();
 				}
+
+
 			}
 			ImGui::End();
 		}
