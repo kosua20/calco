@@ -136,7 +136,7 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 		// Build representation before substitution.
 
 		// Build unique name for all arguments.
-		const std::string suffix = "_" + funDef->name + "_" + std::to_string(_funcCounter);
+		const std::string suffix = "@" + funDef->name + "_" + std::to_string(_funcCounter);
 
 		// Insert current values of all global variables and unicize arguments names.
 		FuncSubstitution flattener(_globals, _stdlib, funDef->args, suffix);

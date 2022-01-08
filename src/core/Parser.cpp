@@ -12,9 +12,10 @@
 	11 "<", ">", "<=", ">="
 	10 "==", "!="
 	9 "&"
-	8 "@"
+	8 "#"
 	7 "|"
 	6 "&&"
+	5 "##"
 	4 "||"
 	3 "?", ":"
 	2 "="
@@ -26,10 +27,10 @@
  expression     → ternary
  ternary		→ boolOr ("?" boolOr ":" boolOr)*
  boolOr			→ boolXor ( "||" boolXor)*
- boolXor		→ boolAnd ( "@@" boolAnd)*
+ boolXor		→ boolAnd ( "##" boolAnd)*
  boolAnd		→ bitOr ( "&&" bitOr)*
  bitOr			→ bitXor ( "|" bitXor)*
- bitXor			→ bitAnd ( "@" bitAnd)*
+ bitXor			→ bitAnd ( "#" bitAnd)*
  bitAnd			→ equality ( "&" equality)*
  equality       → comparison ( ( "!=" | "==" ) comparison )*
  comparison     → bitShift ( ( ">" | ">=" | "<" | "<=" ) bitShift )*

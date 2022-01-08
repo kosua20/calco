@@ -51,7 +51,7 @@ bool Scanner::isIdentifierCharAt(long pos) const {
 		return false;
 	}
 	const char a = at(pos);
-	return (a >= 'a' && a <= 'z') || (a >= 'A' && a <= 'Z') || (a == '_');
+	return (a >= 'a' && a <= 'z') || (a >= 'A' && a <= 'Z') || (a == '_') || (a == '@');
 }
 
 Status Scanner::scan(){
@@ -302,10 +302,10 @@ Status Scanner::scan(){
 			wasOperator = true;
 			opType = Operator::BitNot;
 
-		} else if (c0 == '@'){
+		} else if (c0 == '#'){
 			wasOperator = true;
 
-			if(c1 == '@'){
+			if(c1 == '#'){
 				opType = Operator::BoolXor;
 				opSize = 2;
 			} else {

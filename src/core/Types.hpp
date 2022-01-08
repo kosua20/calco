@@ -30,7 +30,7 @@ static const std::unordered_map<std::string, double> MathConstants = {
 
 inline std::string OperatorString(Operator op){
 	static const std::vector<std::string> opStrs = {
-		"(", ")", "+", "-", "*", "/", "^", "%", "=", "<<", ">>", "|", "&", "~", "@", "||", "&&", "!", "@@", "?", ":", "<", ">", "<=", ">=", "==", "!=", ",", "."
+		"(", ")", "+", "-", "*", "/", "^", "%", "=", "<<", ">>", "|", "&", "~", "#", "||", "&&", "!", "##", "?", ":", "<", ">", "<=", ">=", "==", "!=", ",", "."
 	};
 	return opStrs[uint(op)];
 }
