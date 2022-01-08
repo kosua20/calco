@@ -5,7 +5,14 @@
 #include "core/system/TextUtilities.hpp"
 
 void Documentation::setVar(const std::string& name, const Value& value){
-	_variables[name] = value.toString(_format);
+	const std::string val = value.toString(_format);
+	uint lineCount = 1;
+	for(const auto& c : val){
+		if(c == '\n'){
+			++lineCount;
+		}
+	}
+	_variables[name] = {val, lineCount };
 }
 
 void Documentation::setFunc(const std::string& name, const std::shared_ptr<FunctionDef>& def){

@@ -1,7 +1,7 @@
 #pragma once
 #include "core/Common.hpp"
 #include "core/Functions.hpp"
-
+#include <map>
 
 class Documentation {
 public:
@@ -11,8 +11,14 @@ public:
 		std::string expression;
 	};
 
-	using Functions = std::unordered_map<std::string, Function>;
-	using Variables = std::unordered_map<std::string, std::string>;
+	struct Variable {
+		std::string value;
+		uint count;
+	};
+
+	// We want lexicographic ordering for a nicer listing display.
+	using Functions = std::map<std::string, Function>;
+	using Variables = std::map<std::string, Variable>;
 
 	void setVar(const std::string& name, const Value& value);
 	void setFunc(const std::string& name, const std::shared_ptr<FunctionDef>& def);
