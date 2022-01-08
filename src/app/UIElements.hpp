@@ -45,7 +45,8 @@ struct UIStyle {
 	ImVec4 errorColor;
 	ImVec4 backgroundColor;
 	ImVec4 wordColors[Calculator::Word::COUNT];
-	bool displayRowMajor = true;
+	Format format;
+
 	static const std::string wordNames[Calculator::Word::COUNT];
 
 };

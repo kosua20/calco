@@ -8,6 +8,7 @@ const std::string UIStyle::wordNames[] = {
 };
 
 UIStyle::UIStyle() {
+	format = Format(Format::BASE_10_FLAG | Format::MAJOR_ROW_FLAG);
 	resetColors();
 }
 
@@ -35,8 +36,8 @@ void UIStyle::loadFromFile(const std::string& path) {
 			continue;
 		}
 		const std::string& key = lineElements[0];
-		if (key == "ROWMAJOR") {
-			displayRowMajor = std::stoi(lineElements[1]) != 0;
+		if (key == "FORMAT") {
+			format = Format(std::stoul(lineElements[1]));
 			continue;
 		}
 		// all other are colors
@@ -83,7 +84,7 @@ void UIStyle::saveToFile(const std::string& path) {
 
 	file << "BACKGROUND " << backgroundColor.x << " " << backgroundColor.y << " " << backgroundColor.z << "\n";
 	file << "ERROR " << errorColor.x << " " << errorColor.y << " " << errorColor.z << "\n";
-	file << "ROWMAJOR " << (displayRowMajor ? 1 : 0) << "\n";
+	file << "FORMAT " << (unsigned long)format << "\n";
 	for (uint i = 0; i < Calculator::Word::COUNT; ++i) {
 		file << wordNames[i] << " " << wordColors[i].x << " " << wordColors[i].y << " " << wordColors[i].z << "\n";
 	}

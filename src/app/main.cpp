@@ -387,6 +387,8 @@ int main(int argc, char** argv){
 	
 	// Save/restore calculator state (save all internal state + formatted output)
 	loadStateFromFile(config.historyPath, state, calculator);
+	// Apply style.
+	calculator.updateDocumentation(style.format);
 
 	bool shouldFocusTextField = true;
 	while(!glfwWindowShouldClose(window)) {
@@ -405,6 +407,7 @@ int main(int argc, char** argv){
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		bool openPopup = false;
+		bool updateDoc = false;
 
 		if(ImGui::BeginMainMenuBar()){
 
@@ -416,7 +419,20 @@ int main(int argc, char** argv){
 						tmpStyle = style;
 						openPopup = true;
 					}
-					ImGui::Checkbox("Row major matrix display", &style.displayRowMajor);
+					bool displayRowMajor = (style.format & Format::MAJOR_MASK) == Format::MAJOR_ROW_FLAG;
+					if(ImGui::Checkbox("Row major matrix display", &displayRowMajor)){
+						const Format majorFormat = displayRowMajor ? Format::MAJOR_ROW_FLAG : Format::MAJOR_COL_FLAG;
+						style.format = Format((style.format & ~Format::MAJOR_MASK) | majorFormat);
+						updateDoc = true;
+					}
+					ImGui::PushItemWidth(120);
+					int base = (style.format & Format::BASE_MASK) >> 1;
+					if(ImGui::Combo("Integer base", &base, "Binary\0Octal\0Hexadecimal\0Decimal\0")){
+						const Format baseFormat = Format((base << 1) & Format::BASE_MASK);
+						style.format = Format((style.format & ~Format::BASE_MASK) | baseFormat);
+						updateDoc = true;
+					}
+					ImGui::PopItemWidth();
 					ImGui::EndMenu();
 				}
 
@@ -544,7 +560,7 @@ int main(int argc, char** argv){
 					state.savedCursor = 0;
 
 					Value result;
-					Format format;
+					Format format = style.format;
 					std::vector<Calculator::Word> wordInfos;
 					const bool success = calculator.evaluate(newLine, result, wordInfos, format);
 
@@ -582,9 +598,8 @@ int main(int argc, char** argv){
 						// Used for copy/paste.
 						const std::string internalStr = result.toString(Format::INTERNAL);
 
-						// Build final display format.
-						const Format tgtFormat = Format((format & Format::BASE_MASK) | (style.displayRowMajor ? Format::MAJOR_ROW_FLAG : Format::MAJOR_COL_FLAG));
-						const std::string externalStr = result.toString(tgtFormat);
+						// Build final display properly formatted.
+						const std::string externalStr = result.toString(format);
 
 						// The message can be multi-lines, split it.
 						const std::vector<std::string> sublines = TextUtilities::split(externalStr, "\n", false);
@@ -614,8 +629,6 @@ int main(int argc, char** argv){
 
 		shouldFocusTextField = false;
 
-		/// TODO: format settings for variables, library constants
-
 		const int tableFlags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY;
 		const int panelFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings;
 		const int selectFlags = ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap;
@@ -640,7 +653,7 @@ int main(int argc, char** argv){
 						ImGui::TableNextColumn();
 
 						if (ImGui::Selectable(func.second.name.c_str(), false, selectFlags, ImVec2(0, baseHeight))){
-							// Register text to insert, will be done in the text field conitnuous callback.
+							// Register text to insert, will be done in the text field continuous callback.
 							state.shouldInsert = true;
 							state.textToInsert = func.second.name;
 							shouldFocusTextField = true;
@@ -661,8 +674,24 @@ int main(int argc, char** argv){
 			ImGui::SetNextWindowSizeConstraints(ImVec2(outerSize.x, 0), ImVec2(outerSize.x, FLT_MAX));
 			if (ImGui::Begin("Variables", &state.showVariables, panelFlags)) {
 
-				const ImVec2 innerSize(ImGui::GetWindowSize().x - 25, 0);
+				// Options for display:
+				bool displayRowMajor = (style.format & Format::MAJOR_MASK) == Format::MAJOR_ROW_FLAG;
+				if(ImGui::Checkbox("Row major matrices", &displayRowMajor)){
+					const Format majorFormat = displayRowMajor ? Format::MAJOR_ROW_FLAG : Format::MAJOR_COL_FLAG;
+					style.format = Format((style.format & ~Format::MAJOR_MASK) | majorFormat);
+					updateDoc = true;
+				}
+				ImGui::SameLine();
+				ImGui::PushItemWidth(120);
+				int base = (style.format & Format::BASE_MASK) >> 1;
+				if(ImGui::Combo("Integer base", &base, "Binary\0Octal\0Hexadecimal\0Decimal\0")){
+					const Format baseFormat = Format((base << 1) & Format::BASE_MASK);
+					style.format = Format((style.format & ~Format::BASE_MASK) | baseFormat);
+					updateDoc = true;
+				}
+				ImGui::PopItemWidth();
 
+				const ImVec2 innerSize(ImGui::GetWindowSize().x - 25, 0);
 				if(ImGui::BeginTable("##VariablesTable", 2, tableFlags, innerSize)){
 					ImGui::TableSetupColumn("Name");
 					ImGui::TableSetupColumn("Value");
@@ -754,6 +783,9 @@ int main(int argc, char** argv){
 			ImGui::End();
 		}
 
+		if(updateDoc){
+			calculator.updateDocumentation(style.format);
+		}
 		// Render the interface.
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
