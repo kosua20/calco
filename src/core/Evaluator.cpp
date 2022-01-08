@@ -89,13 +89,13 @@ Value ExpLogger::process(const FunctionDef& exp)  {
 	const size_t argCount = exp.args.size();
 	for(size_t aid = 0; aid < argCount; ++aid){
 		const auto& arg = exp.args[aid];
-		args += (aid != 0 ? "," : "") + arg;
+		args += (aid != 0 ? ", " : "") + arg;
 	}
 	_precedences.push(0u);
 	const std::string funcContent = exp.expr->evaluate(*this).str;
 	_precedences.pop();
 	// Root, no parenthesis around a definition.
-	return exp.name + "( " + args + " ) = " + funcContent;
+	return exp.name + "(" + args + ") = " + funcContent;
 }
 
 Value ExpLogger::process(FunctionVar& exp) {
@@ -114,11 +114,11 @@ Value ExpLogger::process(const FunctionCall& exp)  {
 	for(size_t aid = 0; aid < argCount; ++aid){
 		const auto& arg = exp.args[aid];
 		const std::string str = arg->evaluate(*this).str;
-		args += (aid != 0 ? "," : "") + str;
+		args += (aid != 0 ? ", " : "") + str;
 	}
 	_precedences.pop();
 	// No parenthesis around a function call.
-	return exp.name + "( " + args + " )";
+	return exp.name + "(" + args + ")";
 }
 
 #define EXIT(exp, msg) registerError(msg, exp); return false;
