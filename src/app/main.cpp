@@ -444,6 +444,13 @@ int main(int argc, char** argv){
 				ImGui::EndMenu();
 			}
 
+			if(ImGui::BeginMenu("Window")){
+				ImGui::MenuItem("Functions", nullptr, &state.showFunctions, true);
+				ImGui::MenuItem("Library", nullptr, &state.showLibrary, true);
+				ImGui::MenuItem("Variables", nullptr, &state.showVariables, true);
+				ImGui::EndMenu();
+			}
+
 			if(ImGui::BeginMenu("About")){
 				ImGui::Text( "Calco - © Simon Rodriguez 2021" );
 				ImGui::Text( "version 1.0.0" );
@@ -607,43 +614,108 @@ int main(int argc, char** argv){
 
 		shouldFocusTextField = false;
 
-		/// TODO: proper column sizing, bg color, sorting?, clicking on row to paste name/call, format settings for variables
-		///
-		if (ImGui::Begin("Functions")) {
-			ImGui::BeginTable("##FunctionsTable", 2, ImGuiTableFlags_Borders);
-			for (const auto& func : calculator.functions()) {
-				ImGui::TableNextColumn();
-				ImGui::TextUnformatted(func.second.name.c_str());
-				ImGui::TableNextColumn();
-				ImGui::TextUnformatted(func.second.expression.c_str());
-			}
-			ImGui::EndTable();
-		}
-		ImGui::End();
+		/// TODO: format settings for variables, library constants
 
-		if (ImGui::Begin("Variables")) {
-			ImGui::BeginTable("##VariablesTable", 2, ImGuiTableFlags_Borders);
-			for (const auto& var : calculator.variables()) {
-				ImGui::TableNextColumn();
-				ImGui::TextUnformatted(var.first.c_str());
-				ImGui::TableNextColumn();
-				ImGui::TextUnformatted(var.second.c_str());
-			}
-			ImGui::EndTable();
-		}
-		ImGui::End();
+		const int tableFlags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY;
+		const int panelFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings;
+		const int selectFlags = ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap;
+		const float baseHeight = ImGui::GetTextLineHeight();
 
-		if (ImGui::Begin("Library")) {
-			ImGui::BeginTable("##LibTable", 2, ImGuiTableFlags_Borders);
-			for (const auto& func : calculator.stdlib()) {
-				ImGui::TableNextColumn();
-				ImGui::TextUnformatted(func.second.name.c_str());
-				ImGui::TableNextColumn();
-				ImGui::TextUnformatted(func.second.expression.c_str());
+		const ImVec2 outerSize(400, 300);
+		const ImVec2 outerSizeFunc(outerSize.x + 100, outerSize.y);
+
+		if(state.showFunctions){
+			ImGui::SetNextWindowSize(outerSizeFunc, ImGuiCond_Once);
+			ImGui::SetNextWindowSizeConstraints(ImVec2(outerSizeFunc.x, 0), ImVec2(outerSizeFunc.x, FLT_MAX));
+			if (ImGui::Begin("Functions", &state.showFunctions, panelFlags)) {
+
+				const ImVec2 innerSize(ImGui::GetWindowSize().x - 25, 0);
+
+				if(ImGui::BeginTable("##FunctionsTable", 2, tableFlags, innerSize)){
+					ImGui::TableSetupColumn("Name");
+					ImGui::TableSetupColumn("Expression");
+					ImGui::TableHeadersRow();
+
+					for (const auto& func : calculator.functions()) {
+						ImGui::TableNextColumn();
+
+						if (ImGui::Selectable(func.second.name.c_str(), false, selectFlags, ImVec2(0, baseHeight))){
+							// Register text to insert, will be done in the text field conitnuous callback.
+							state.shouldInsert = true;
+							state.textToInsert = func.second.name;
+							shouldFocusTextField = true;
+						}
+						ImGui::TableNextColumn();
+						ImGui::PushTextWrapPos(innerSize.x);
+						ImGui::TextUnformatted(func.second.expression.c_str());
+						ImGui::PopTextWrapPos();
+					}
+					ImGui::EndTable();
+				}
 			}
-			ImGui::EndTable();
+			ImGui::End();
 		}
-		ImGui::End();
+
+		if(state.showVariables){
+			ImGui::SetNextWindowSize(outerSize, ImGuiCond_Once);
+			ImGui::SetNextWindowSizeConstraints(ImVec2(outerSize.x, 0), ImVec2(outerSize.x, FLT_MAX));
+			if (ImGui::Begin("Variables", &state.showVariables, panelFlags)) {
+
+				const ImVec2 innerSize(ImGui::GetWindowSize().x - 25, 0);
+
+				if(ImGui::BeginTable("##VariablesTable", 2, tableFlags, innerSize)){
+					ImGui::TableSetupColumn("Name");
+					ImGui::TableSetupColumn("Value");
+					ImGui::TableHeadersRow();
+
+					for (const auto& var : calculator.variables()) {
+						ImGui::TableNextColumn();
+
+						const float rowHeight = var.second.count * baseHeight;
+						if (ImGui::Selectable(var.first.c_str(), false, selectFlags, ImVec2(0, rowHeight))){
+							// Register text to insert, will be done in the text field conitnuous callback.
+							state.shouldInsert = true;
+							state.textToInsert = var.first;
+							shouldFocusTextField = true;
+						}
+
+						ImGui::TableNextColumn();
+						ImGui::TextUnformatted(var.second.value.c_str());
+					}
+					ImGui::EndTable();
+				}
+			}
+			ImGui::End();
+		}
+
+		if(state.showLibrary){
+			ImGui::SetNextWindowSize(outerSize, ImGuiCond_Once);
+			ImGui::SetNextWindowSizeConstraints(ImVec2(outerSize.x, 0), ImVec2(outerSize.x, FLT_MAX));
+			if (ImGui::Begin("Library", &state.showLibrary, panelFlags)) {
+
+				const ImVec2 innerSize(ImGui::GetWindowSize().x - 25, 0);
+				
+				if(ImGui::BeginTable("##LibTable", 2, tableFlags, innerSize)){
+					ImGui::TableSetupColumn("Name");
+					ImGui::TableSetupColumn("Parameters");
+					ImGui::TableHeadersRow();
+					for (const auto& func : calculator.stdlib()) {
+						ImGui::TableNextColumn();
+
+						if (ImGui::Selectable(func.second.name.c_str(), false, selectFlags, ImVec2(0, baseHeight))){
+							// Register text to insert, will be done in the text field conitnuous callback.
+							state.shouldInsert = true;
+							state.textToInsert = func.second.name + "()";
+							shouldFocusTextField = true;
+						}
+						ImGui::TableNextColumn();
+						ImGui::TextUnformatted(func.second.expression.c_str());
+					}
+					ImGui::EndTable();
+				}
+			}
+			ImGui::End();
+		}
 
 		// Render the interface.
 		ImGui::Render();

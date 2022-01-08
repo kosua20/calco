@@ -59,6 +59,9 @@ struct UIState {
 	int historyPos = -1;
 	std::string textToInsert;
 	bool shouldInsert = false;
+	bool showVariables = false;
+	bool showFunctions = false;
+	bool showLibrary = false;
 
 	void saveToStream(std::ostream& str) const;
 
