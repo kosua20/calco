@@ -118,6 +118,7 @@ private:
 	struct FunctionInfos {
 		Value (FunctionsLibrary::*call)(const std::vector<Value>&, ExpEval& evaluator, const std::string&);
 		std::vector<size_t> allowedCounts;
+		std::string description;
 	};
 
 	std::unordered_map<std::string, FunctionInfos> _funcMap;
