@@ -7,6 +7,9 @@
 
 class ExpLogger final : public TreeVisitor {
 public:
+
+	ExpLogger();
+	
 	Value process(const Unary& exp) override;
 	Value process(const Binary& exp) override;
 	Value process(const Ternary& exp) override;
@@ -17,6 +20,10 @@ public:
 	Value process(const FunctionDef& exp) override;
 	Value process( 		FunctionVar& exp) override;
 	Value process(const FunctionCall& exp) override;
+
+private:
+
+	std::stack<uint> _precedences;
 };
 
 class ExpEval final : public TreeVisitor {

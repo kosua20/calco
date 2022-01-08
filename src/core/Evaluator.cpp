@@ -1,46 +1,87 @@
 #include "core/Evaluator.hpp"
 
+static const std::vector<uint> opPrecedences = {
+	18u, 18u, 13u, 13u, 14u, 14u, 16u, 14u, 2u, 12u, 12u, 7u, 9u, 15u, 8u, 4u, 6u, 15u, 5u, 3u, 3u, 11u, 11u, 11u, 11u, 10u, 10u, 1u, 17u
+};
+
+ExpLogger::ExpLogger() {
+	_precedences.push(0u);
+}
+
 Value ExpLogger::process(const Unary& exp)  {
-	const std::string str = exp.exp->evaluate(*this).str;
-	return "( " + OperatorString(exp.op) + str + " )";
+	uint prec = opPrecedences[uint(exp.op)];
+	if(exp.op == Operator::Plus || exp.op == Operator::Minus){
+		prec += 2;
+	}
+	std::string str = OperatorString(exp.op);
+	_precedences.push(prec);
+	str += exp.exp->evaluate(*this).str;
+	_precedences.pop();
+
+	// If the parent has higher precedence, we should add parenthesis around this one.
+	if(_precedences.top() > prec){
+		str = "(" + str + ")";
+	}
+	return str;
 }
 
 Value ExpLogger::process(const Binary& exp)  {
+	const uint prec = opPrecedences[uint(exp.op)];
+	_precedences.push(prec);
 	const std::string strL = exp.left->evaluate(*this).str;
 	const std::string strR = exp.right->evaluate(*this).str;
-	return "( " + strL + " " + OperatorString(exp.op) + " " + strR + " )";
+	_precedences.pop();
+	std::string str = strL + " " + OperatorString(exp.op) + " " + strR;
+	// If the parent has higher precedence, we should add parenthesis around this one.
+	if(_precedences.top() > prec){
+		str = "(" + str + ")";
+	}
+	return str;
 }
 
 Value ExpLogger::process(const Ternary& exp) {
+	const uint prec = 3u;
+	_precedences.push(prec);
 	const std::string strC = exp.condition->evaluate(*this).str;
 	const std::string strP = exp.pass->evaluate(*this).str;
 	const std::string strF = exp.fail->evaluate(*this).str;
-	return "( " + strC + " ? " + strP + " : " + strF + " )";
+	_precedences.pop();
+
+	std::string str = strC + " ? " + strP + " : " + strF;
+	if(_precedences.top() > prec){
+		str = "(" + str + ")";
+	}
+	return str;
 }
 
 Value ExpLogger::process(const Member& exp) {
-	const std::string str = exp.parent->evaluate(*this).str;
-	return "( " + str + "." + exp.member + " )";
+	const uint prec = 17u;
+	_precedences.push(prec);
+	std::string str = exp.parent->evaluate(*this).str;
+	str += "." + exp.member;
+	_precedences.pop();
+	if(_precedences.top() > prec){
+		str = "(" + str + ")";
+	}
+	return str;
 }
 
 Value ExpLogger::process(const Literal& exp) {
-	switch(exp.val.type){
-		case Value::INTEGER:
-			return std::to_string(exp.val.i);
-		case Value::FLOAT:
-			return std::to_string(exp.val.f);
-		default:
-			break;
-	}
-	return std::string("(complex type value)");
+	// No parenthesis around a literal, ever.
+	return exp.val.toString(Format::INTERNAL);
 }
 
 Value ExpLogger::process(const Variable& exp) {
+	// No parenthesis around a variable, ever.
 	return exp.name;
 }
 
 Value ExpLogger::process(const VariableDef& exp) {
-	return exp.name + " = " + exp.expr->evaluate(*this).str;
+	_precedences.push(0u);
+	const std::string varContent = exp.expr->evaluate(*this).str;
+	_precedences.pop();
+	// Root, no parenthesis around a definition.
+	return exp.name + " = " + varContent;
 }
 
 Value ExpLogger::process(const FunctionDef& exp)  {
@@ -50,14 +91,24 @@ Value ExpLogger::process(const FunctionDef& exp)  {
 		const auto& arg = exp.args[aid];
 		args += (aid != 0 ? "," : "") + arg;
 	}
-	return exp.name + "( " + args + " ) = " + exp.expr->evaluate(*this).str;
+	_precedences.push(0u);
+	const std::string funcContent = exp.expr->evaluate(*this).str;
+	_precedences.pop();
+	// Root, no parenthesis around a definition.
+	return exp.name + "( " + args + " ) = " + funcContent;
 }
 
 Value ExpLogger::process(FunctionVar& exp) {
+	// No parenthesis around a literal or identifier.
+	if(exp.hasValue()){
+		return exp.value().toString(Format::INTERNAL);
+	}
 	return exp.name;
 }
 
 Value ExpLogger::process(const FunctionCall& exp)  {
+	const uint prec = 0u;
+	_precedences.push(prec);
 	std::string args;
 	const size_t argCount = exp.args.size();
 	for(size_t aid = 0; aid < argCount; ++aid){
@@ -65,6 +116,8 @@ Value ExpLogger::process(const FunctionCall& exp)  {
 		const std::string str = arg->evaluate(*this).str;
 		args += (aid != 0 ? "," : "") + str;
 	}
+	_precedences.pop();
+	// No parenthesis around a function call.
 	return exp.name + "( " + args + " )";
 }
 
