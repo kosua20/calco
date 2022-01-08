@@ -29,7 +29,7 @@ private:
 class ExpEval final : public TreeVisitor {
 public:
 
-	ExpEval(const Scope& scope, FunctionsLibrary& stdlib);
+	ExpEval(const Scope& scope, FunctionsLibrary& stdlib, const Format& format);
 
 	Value process(const Unary& exp) override;
 	Value process(const Binary& exp) override;
@@ -78,7 +78,7 @@ private:
 	FunctionsLibrary& _stdlib;
 
 	std::stack<Scope> _localScopes;
-	Format _format = Format::INTERNAL;
+	Format _format;
 };
 
 class FuncSubstitution final : public TreeVisitor {

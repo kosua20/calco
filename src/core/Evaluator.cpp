@@ -123,7 +123,7 @@ Value ExpLogger::process(const FunctionCall& exp)  {
 
 #define EXIT(exp, msg) registerError(msg, exp); return false;
 
-ExpEval::ExpEval(const Scope& scope, FunctionsLibrary& stdlib) : _globalScope(scope), _stdlib(stdlib) {}
+ExpEval::ExpEval(const Scope& scope, FunctionsLibrary& stdlib, const Format& format) : _globalScope(scope), _stdlib(stdlib), _format(format) {}
 
 void ExpEval::setBase(Format format){
 	_format = Format((format & Format::BASE_MASK) | (_format & ~BASE_MASK));

@@ -77,7 +77,6 @@ Calculator::Calculator(){
 
 bool Calculator::evaluate(const std::string& input, Value& output, std::vector<Word>& infos, Format& format){
 	const std::string& cleanInput = input;
-	format = Format(Format::BASE_10_FLAG | Format::MAJOR_COL_FLAG);
 
 	// Scanning
 	Scanner scanner(cleanInput);
@@ -155,17 +154,17 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 	// Variable definition
 	if(auto varDef = std::dynamic_pointer_cast<VariableDef>(parser.tree())){
 
-		ExpEval evaluator(_globals, _stdlib);
+		ExpEval evaluator(_globals, _stdlib, format);
 		Value outValue;
 		const Status evalResult = varDef->expr->evaluate(evaluator, outValue);
 
 		if(evalResult.success){
 
-			format = evaluator.getFormat();
 			// Store result in global scope.
 			_globals.setVar(varDef->name, outValue);
 			_globals.setVar("ans", outValue);
 			output = outValue;
+			format = evaluator.getFormat();
 
 			// Register variable name for display.
 			_doc.setVar(varDef->name, outValue);
@@ -226,16 +225,16 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 		}
 
 	} else {
-		ExpEval evaluator(_globals, _stdlib);
+		ExpEval evaluator(_globals, _stdlib, format);
 		Value outValue;
 		const Status evalResult = parser.tree()->evaluate(evaluator, outValue);
 
 		if(evalResult.success){
-			format = evaluator.getFormat();
 			// Update ans variable with the last result.
 			_globals.setVar("ans", outValue);
 			_doc.setVar("ans", outValue);
 			output = outValue;
+			format = evaluator.getFormat();
 			return true;
 
 		} else {
@@ -300,7 +299,7 @@ void Calculator::saveToStream(std::ostream& str) const {
 
 void Calculator::loadFromStream(std::istream& str){
 	Scope emptyGlobal;
-	ExpEval sharedEval(emptyGlobal, _stdlib);
+	ExpEval sharedEval(emptyGlobal, _stdlib, Format::INTERNAL);
 
 	// Assume CALCSTATE has just been read.
 	std::string dfltStr;
