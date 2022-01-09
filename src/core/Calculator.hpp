@@ -60,7 +60,7 @@ public:
 
 	Calculator();
 
-	bool evaluate(const std::string& input, Value& output, std::vector<Word>& info, Format& format);
+	bool evaluate(const std::string& input, Value& output, std::vector<Word>& info, Format& format, bool temporary);
 
 	void clear();
 

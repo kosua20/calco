@@ -75,7 +75,7 @@ Calculator::Calculator(){
 	_doc.setLibrary(_stdlib);
 }
 
-bool Calculator::evaluate(const std::string& input, Value& output, std::vector<Word>& infos, Format& format){
+bool Calculator::evaluate(const std::string& input, Value& output, std::vector<Word>& infos, Format& format, bool temporary){
 	const std::string& cleanInput = input;
 
 	// Scanning
@@ -110,40 +110,43 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 
 	// Generate highlighting info.
 	const auto& tokens = scanner.tokens();
-	const size_t tokenCount = tokens.size();
-	infos.resize(tokenCount);
-	
-	// Classify each token.
-	for(size_t tid = 0; tid < tokenCount; ++tid){
 
-		const Token& token = tokens[tid];
-		switch(token.type){
-			case Token::Type::Operator:
-			{
-				// Special cases: ( ) , . and unary (operator following an operator or at beginning of line)
-				const bool isSeparator = token.opVal == Operator::OpenParenth || token.opVal == Operator::CloseParenth || token.opVal == Operator::Comma || token.opVal == Operator::Dot;
-				const bool followOperator = tid == 0 || (tokens[tid-1].type == Token::Type::Operator && tokens[tid-1].opVal != Operator::CloseParenth);
-				infos[tid].type = (isSeparator || followOperator) ? Word::SEPARATOR : Word::OPERATOR;
-				break;
-			}
-			case Token::Type::Identifier:
-			{
-				// If followed by a parenthesis, function. Otherwise, variable.
-				if(tid + 1 < tokenCount && tokens[tid+1].type == Token::Type::Operator && tokens[tid+1].opVal == Operator::OpenParenth){
-					infos[tid].type =  Word::FUNCTION;
-				} else {
-					infos[tid].type =  Word::VARIABLE;
+	if(!temporary){
+		const size_t tokenCount = tokens.size();
+		infos.resize(tokenCount);
+
+		// Classify each token.
+		for(size_t tid = 0; tid < tokenCount; ++tid){
+
+			const Token& token = tokens[tid];
+			switch(token.type){
+				case Token::Type::Operator:
+				{
+					// Special cases: ( ) , . and unary (operator following an operator or at beginning of line)
+					const bool isSeparator = token.opVal == Operator::OpenParenth || token.opVal == Operator::CloseParenth || token.opVal == Operator::Comma || token.opVal == Operator::Dot;
+					const bool followOperator = tid == 0 || (tokens[tid-1].type == Token::Type::Operator && tokens[tid-1].opVal != Operator::CloseParenth);
+					infos[tid].type = (isSeparator || followOperator) ? Word::SEPARATOR : Word::OPERATOR;
+					break;
 				}
+				case Token::Type::Identifier:
+				{
+					// If followed by a parenthesis, function. Otherwise, variable.
+					if(tid + 1 < tokenCount && tokens[tid+1].type == Token::Type::Operator && tokens[tid+1].opVal == Operator::OpenParenth){
+						infos[tid].type =  Word::FUNCTION;
+					} else {
+						infos[tid].type =  Word::VARIABLE;
+					}
+					break;
+				}
+				case Token::Type::Float:
+				case Token::Type::Integer:
+				default:
+					infos[tid].type = Word::LITERAL;
 				break;
 			}
-			case Token::Type::Float:
-			case Token::Type::Integer:
-			default:
-				infos[tid].type = Word::LITERAL;
-			break;
+			infos[tid].location = token.location;
+			infos[tid].size = token.size;
 		}
-		infos[tid].location = token.location;
-		infos[tid].size = token.size;
 	}
 
 	// Three possible cases:
@@ -160,15 +163,17 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 
 		if(evalResult.success){
 
-			// Store result in global scope.
-			_globals.setVar(varDef->name, outValue);
-			_globals.setVar("ans", outValue);
 			output = outValue;
 			format = evaluator.getFormat();
 
-			// Register variable name for display.
-			_doc.setVar(varDef->name, outValue);
-			_doc.setVar("ans", outValue);
+			if(!temporary){
+				// Store result in global scope.
+				_globals.setVar(varDef->name, outValue);
+				_globals.setVar("ans", outValue);
+				// Register variable name for display.
+				_doc.setVar(varDef->name, outValue);
+				_doc.setVar("ans", outValue);
+			}
 			return true;
 
 		} else {
@@ -188,7 +193,7 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 	} else if(auto funDef = std::dynamic_pointer_cast<FunctionDef>(parser.tree())){
 
 		// Build unique name for all arguments.
-		const std::string suffix = "@" + funDef->name + "_" + std::to_string(_funcCounter);
+		const std::string suffix = "@" + funDef->name + "_" + (temporary ? "tmp" : std::to_string(_funcCounter));
 
 		// Insert current values of all global variables and unicize arguments names.
 		FuncSubstitution flattener(_globals, _stdlib, funDef->args, suffix);
@@ -201,14 +206,15 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 		}
 
 		if(evalResult.success){
-
-			// Store flattened function in global scope.
-			_globals.setFunc(funDef->name, funDef);
 			output = funDef->name;
-			++_funcCounter;
 
-			// Register function name for display.
-			_doc.setFunc(funDef->name, funDef);
+			if(!temporary){
+				++_funcCounter;
+				// Store flattened function in global scope.
+				_globals.setFunc(funDef->name, funDef);
+				// Register function name for display.
+				_doc.setFunc(funDef->name, funDef);
+			}
 			return true;
 		} else {
 			output = "Evaluation: " + evalResult.message + " ";
@@ -230,11 +236,14 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 		const Status evalResult = parser.tree()->evaluate(evaluator, outValue);
 
 		if(evalResult.success){
-			// Update ans variable with the last result.
-			_globals.setVar("ans", outValue);
-			_doc.setVar("ans", outValue);
 			output = outValue;
 			format = evaluator.getFormat();
+
+			if(!temporary){
+				// Update ans variable with the last result.
+				_globals.setVar("ans", outValue);
+				_doc.setVar("ans", outValue);
+			}
 			return true;
 
 		} else {
@@ -251,7 +260,6 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 			return false;
 
 		}
-
 	}
 
 	return true;

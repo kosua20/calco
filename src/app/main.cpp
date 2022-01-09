@@ -74,6 +74,7 @@ GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 	fontConsole.FontDataOwnedByAtlas = false;
 
 	ImGuiIO & io = ImGui::GetIO();
+	io.IniFilename = nullptr;
 	uiStyle.textFont = io.Fonts->AddFont(&fontLato);
 	uiStyle.consoleFont = io.Fonts->AddFont(&fontConsole);
 
@@ -138,6 +139,11 @@ int textCallback(ImGuiInputTextCallbackData* data){
 	}
 
 	switch (data->EventFlag) {
+		case ImGuiInputTextFlags_CallbackEdit:
+		{
+			state.evaluatePartial = true;
+			break;
+		}
 		case ImGuiInputTextFlags_CallbackHistory:
 		{
 			const int prevHistoryPos = state.historyPos;
@@ -391,6 +397,11 @@ int main(int argc, char** argv){
 	calculator.updateDocumentation(style.format);
 
 	bool shouldFocusTextField = true;
+
+	bool showCompilationResult = false;
+	bool failedCompilation = false;
+	std::string compilationMsg = "";
+
 	while(!glfwWindowShouldClose(window)) {
 
 		glfwPollEvents();
@@ -409,103 +420,108 @@ int main(int argc, char** argv){
 		bool openPopup = false;
 		bool updateDoc = false;
 
-		if(ImGui::BeginMainMenuBar()){
+		// Menus and settings
+		{
 
-			if(ImGui::BeginMenu("File")){
+			if(ImGui::BeginMainMenuBar()){
 
-				if(ImGui::BeginMenu("Settings")){
+				if(ImGui::BeginMenu("File")){
 
-					if(ImGui::MenuItem("Configure colors...")){
-						tmpStyle = style;
-						openPopup = true;
+					if(ImGui::BeginMenu("Settings")){
+
+						if(ImGui::MenuItem("Configure colors...")){
+							tmpStyle = style;
+							openPopup = true;
+						}
+						bool displayRowMajor = (style.format & Format::MAJOR_MASK) == Format::MAJOR_ROW_FLAG;
+						if(ImGui::Checkbox("Row major matrix display", &displayRowMajor)){
+							const Format majorFormat = displayRowMajor ? Format::MAJOR_ROW_FLAG : Format::MAJOR_COL_FLAG;
+							style.format = Format((style.format & ~Format::MAJOR_MASK) | majorFormat);
+							updateDoc = true;
+						}
+						ImGui::PushItemWidth(120);
+						int base = (style.format & Format::BASE_MASK) >> 1;
+						if(ImGui::Combo("Integer base", &base, "Binary\0Octal\0Hexadecimal\0Decimal\0")){
+							const Format baseFormat = Format((base << 1) & Format::BASE_MASK);
+							style.format = Format((style.format & ~Format::BASE_MASK) | baseFormat);
+							updateDoc = true;
+						}
+						ImGui::PopItemWidth();
+						ImGui::EndMenu();
 					}
-					bool displayRowMajor = (style.format & Format::MAJOR_MASK) == Format::MAJOR_ROW_FLAG;
-					if(ImGui::Checkbox("Row major matrix display", &displayRowMajor)){
-						const Format majorFormat = displayRowMajor ? Format::MAJOR_ROW_FLAG : Format::MAJOR_COL_FLAG;
-						style.format = Format((style.format & ~Format::MAJOR_MASK) | majorFormat);
-						updateDoc = true;
+
+					ImGui::Separator();
+
+					if(ImGui::MenuItem("Clear log...")){
+						const int result = sr_gui_ask_choice("Calco", "Are you sure you want to clear all logged operations?",
+															 SR_GUI_MESSAGE_LEVEL_WARN, "Yes", "No", nullptr);
+						if(result == SR_GUI_BUTTON0){
+							state.lines.clear();
+							state.commands.clear();
+						}
 					}
-					ImGui::PushItemWidth(120);
-					int base = (style.format & Format::BASE_MASK) >> 1;
-					if(ImGui::Combo("Integer base", &base, "Binary\0Octal\0Hexadecimal\0Decimal\0")){
-						const Format baseFormat = Format((base << 1) & Format::BASE_MASK);
-						style.format = Format((style.format & ~Format::BASE_MASK) | baseFormat);
-						updateDoc = true;
+					if(ImGui::MenuItem("Clear memory...")){
+						const int result = sr_gui_ask_choice("Calco", "Are you sure you want to clear?",
+															 SR_GUI_MESSAGE_LEVEL_WARN, "Yes", "No", nullptr);
+						if(result == SR_GUI_BUTTON0){
+							calculator.clear();
+						}
 					}
-					ImGui::PopItemWidth();
+					ImGui::Separator();
+					if(ImGui::MenuItem("Quit")){
+						glfwSetWindowShouldClose(window, GLFW_TRUE);
+					}
 					ImGui::EndMenu();
 				}
 
-				ImGui::Separator();
+				if(ImGui::BeginMenu("View")){
+					ImGui::MenuItem("Functions", nullptr, &state.showFunctions, true);
+					ImGui::MenuItem("Variables", nullptr, &state.showVariables, true);
+					ImGui::MenuItem("Library", nullptr, &state.showLibrary, true);
+					ImGui::EndMenu();
+				}
 
-				if(ImGui::MenuItem("Clear log...")){
-					const int result = sr_gui_ask_choice("Calco", "Are you sure you want to clear all logged operations?",
-														 SR_GUI_MESSAGE_LEVEL_WARN, "Yes", "No", nullptr);
-					if(result == SR_GUI_BUTTON0){
-						state.lines.clear();
-						state.commands.clear();
-					}
+				if(ImGui::BeginMenu("About")){
+					ImGui::Text( "Calco - © Simon Rodriguez 2021" );
+					ImGui::Text( "version 1.0.0" );
+					ImGui::EndMenu();
 				}
-				if(ImGui::MenuItem("Clear memory...")){
-					const int result = sr_gui_ask_choice("Calco", "Are you sure you want to clear?",
-														 SR_GUI_MESSAGE_LEVEL_WARN, "Yes", "No", nullptr);
-					if(result == SR_GUI_BUTTON0){
-						calculator.clear();
-					}
-				}
-				ImGui::Separator();
-				if(ImGui::MenuItem("Quit")){
-					glfwSetWindowShouldClose(window, GLFW_TRUE);
-				}
-				ImGui::EndMenu();
+				ImGui::EndMainMenuBar();
 			}
 
-			if(ImGui::BeginMenu("View")){
-				ImGui::MenuItem("Functions", nullptr, &state.showFunctions, true);
-				ImGui::MenuItem("Variables", nullptr, &state.showVariables, true);
-				ImGui::MenuItem("Library", nullptr, &state.showLibrary, true);
-				ImGui::EndMenu();
+			if (openPopup) {
+				ImGui::OpenPopup("Color scheme");
 			}
-
-			if(ImGui::BeginMenu("About")){
-				ImGui::Text( "Calco - © Simon Rodriguez 2021" );
-				ImGui::Text( "version 1.0.0" );
-				ImGui::EndMenu();
-			}
-			ImGui::EndMainMenuBar();
-		}
-
-		if (openPopup) {
-			ImGui::OpenPopup("Color scheme");
 		}
 
 		const float menuBarHeight = ImGui::GetItemRectSize().y;
-		const float heightToReserve = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
 
-		//ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-		bool showCloseButton = true;
-		if (ImGui::BeginPopupModal("Color scheme", &showCloseButton, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+		{
+			bool showCloseButton = true;
+			if (ImGui::BeginPopupModal("Color scheme", &showCloseButton, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
 
-			// Example
-			customizeStyle(tmpStyle);
+				// Example
+				customizeStyle(tmpStyle);
 
-			// Buttons
-			if(ImGui::Button("Apply", ImVec2(120, 0))){ 
-				style = tmpStyle;
-				ImGui::CloseCurrentPopup(); 
+				// Buttons
+				if(ImGui::Button("Apply", ImVec2(120, 0))){
+					style = tmpStyle;
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::SetItemDefaultFocus();
+				ImGui::SameLine();
+				if(ImGui::Button("Revert", ImVec2(120, 0))){
+					tmpStyle = style;
+				}
+				ImGui::SameLine();
+				if(ImGui::Button("Default", ImVec2(120, 0))){
+					tmpStyle.resetColors();
+				}
+				ImGui::EndPopup();
 			}
-			ImGui::SetItemDefaultFocus();
-			ImGui::SameLine();
-			if(ImGui::Button("Revert", ImVec2(120, 0))){
-				tmpStyle = style;
-			}
-			ImGui::SameLine();
-			if(ImGui::Button("Default", ImVec2(120, 0))){
-				tmpStyle.resetColors();
-			}
-			ImGui::EndPopup();
 		}
 
+		const float heightToReserve = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
 		
 		ImGui::SetNextWindowPos(ImVec2(0.0f, menuBarHeight));
 		ImGui::SetNextWindowSize(ImVec2(float(winW), float(winH) - menuBarHeight));
@@ -517,9 +533,9 @@ int main(int argc, char** argv){
 			ImGui::BeginChild("ScrollingRegion", ImVec2(0, -heightToReserve), false, ImGuiWindowFlags_HorizontalScrollbar);
 
 			ImGui::PushFont(style.consoleFont);
-
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1));
 
+			// Print all lines.
 			const int selectedLine = printLines(state.lines, style, true);
 			if(selectedLine >= 0){
 				// Store selected line in clipboard.
@@ -535,7 +551,6 @@ int main(int argc, char** argv){
 			}
 
 			ImGui::PopStyleVar();
-
 			ImGui::PopFont();
 
 			// Autoscroll to bottom.
@@ -546,7 +561,7 @@ int main(int argc, char** argv){
 			ImGui::Separator();
 
 			// Input line.
-			const ImGuiInputTextFlags inputTextFlags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackAlways;
+			const ImGuiInputTextFlags inputTextFlags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackAlways | ImGuiInputTextFlags_CallbackEdit;
 
 			ImGui::SetNextItemWidth(float(winW) - 2*ImGui::GetStyle().ItemSpacing.x);
 			if(ImGui::InputText("##Input", buffer, 1024, inputTextFlags, &textCallback, &state)){
@@ -558,11 +573,13 @@ int main(int argc, char** argv){
 					state.historyPos = -1;
 					state.savedPartialCommand = "";
 					state.savedCursor = 0;
+					compilationMsg = "";
+					showCompilationResult = false;
 
 					Value result;
 					Format format = style.format;
 					std::vector<Calculator::Word> wordInfos;
-					const bool success = calculator.evaluate(newLine, result, wordInfos, format);
+					const bool success = calculator.evaluate(newLine, result, wordInfos, format, false);
 
 					// Put a break before any input for clarity.
 					state.lines.emplace_back(UILine::EMPTY, "");
@@ -617,175 +634,230 @@ int main(int argc, char** argv){
 				}
 				shouldFocusTextField = true;
 			}
+
 			// Auto-focus on window apparition
 			ImGui::SetItemDefaultFocus();
 			if(shouldFocusTextField){
 				ImGui::SetKeyboardFocusHere(-1); // Auto focus previous widget
 			}
+			if(!ImGui::IsItemActive()){
+				showCompilationResult = false;
+			}
+			if(ImGui::IsItemActivated()){
+				showCompilationResult = true;
+			}
+
+			// Evaluate current typing if edited.
+			if(state.evaluatePartial){
+				state.evaluatePartial = false;
+				std::string newLine(buffer);
+
+				if(!newLine.empty()){
+					Value result;
+					Format format = style.format;
+					std::vector<Calculator::Word> infos;
+					const bool success = calculator.evaluate(newLine, result, infos, format, true);
+					compilationMsg = "";
+					if(!success){
+						showCompilationResult = true;
+						compilationMsg = result.str;
+						failedCompilation = true;
+					} else if(result.type != Value::Type::STRING){
+						showCompilationResult = true;
+						compilationMsg = result.toString(format);
+						failedCompilation = false;
+					}
+				}
+			}
+
 
 		}
+		const float mainWindowHeight = ImGui::GetWindowHeight();
 		ImGui::End();
 		ImGui::PopStyleColor();
 
+		if(showCompilationResult && !compilationMsg.empty()){
+			ImGui::SetNextWindowPos(ImVec2(0, mainWindowHeight + menuBarHeight - heightToReserve), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
+			if(ImGui::Begin("Result display", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)){
+
+				ImGui::PushFont(style.consoleFont);
+				if(failedCompilation){
+					ImGui::PushStyleColor(ImGuiCol_Text, style.errorColor);
+				}
+				ImGui::TextUnformatted(compilationMsg.c_str());
+				if(failedCompilation){
+					ImGui::PopStyleColor();
+				}
+				ImGui::PopFont();
+			}
+			ImGui::End();
+		}
+
+
 		shouldFocusTextField = false;
 
-		const int tableFlags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY;
-		const int panelFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings;
-		const int selectFlags = ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap;
-		const float baseHeight = ImGui::GetTextLineHeight();
+		// Documentation.
+		{
+			const int tableFlags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY;
+			const int panelFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings;
+			const int selectFlags = ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap;
+			const float baseHeight = ImGui::GetTextLineHeight();
 
-		const ImVec2 outerSize(400, 300);
-		const ImVec2 outerSizeFunc(outerSize.x + 100, outerSize.y);
+			const ImVec2 outerSize(400, 300);
+			const ImVec2 outerSizeFunc(outerSize.x + 100, outerSize.y);
 
-		if(state.showFunctions){
-			ImGui::SetNextWindowSize(outerSizeFunc, ImGuiCond_Once);
-			ImGui::SetNextWindowSizeConstraints(ImVec2(outerSizeFunc.x, 0), ImVec2(outerSizeFunc.x, FLT_MAX));
-			if (ImGui::Begin("Functions", &state.showFunctions, panelFlags)) {
+			if(state.showFunctions){
+				ImGui::SetNextWindowSize(outerSizeFunc, ImGuiCond_Once);
+				ImGui::SetNextWindowSizeConstraints(ImVec2(outerSizeFunc.x, 0), ImVec2(outerSizeFunc.x, FLT_MAX));
+				if (ImGui::Begin("Functions", &state.showFunctions, panelFlags)) {
 
-				const ImVec2 innerSize(ImGui::GetWindowSize().x - 25, 0);
+					const ImVec2 innerSize(ImGui::GetWindowSize().x - 25, 0);
 
-				if(ImGui::BeginTable("##FunctionsTable", 2, tableFlags, innerSize)){
-					ImGui::TableSetupColumn("Name");
-					ImGui::TableSetupColumn("Expression");
-					ImGui::TableHeadersRow();
+					if(ImGui::BeginTable("##FunctionsTable", 2, tableFlags, innerSize)){
+						ImGui::TableSetupColumn("Name");
+						ImGui::TableSetupColumn("Expression");
+						ImGui::TableHeadersRow();
 
-					for (const auto& func : calculator.functions()) {
-						ImGui::TableNextColumn();
+						for (const auto& func : calculator.functions()) {
+							ImGui::TableNextColumn();
 
-						if (ImGui::Selectable(func.second.name.c_str(), false, selectFlags, ImVec2(0, baseHeight))){
-							// Register text to insert, will be done in the text field continuous callback.
-							state.shouldInsert = true;
-							state.textToInsert = func.second.name;
-							shouldFocusTextField = true;
-						}
-						ImGui::TableNextColumn();
-						ImGui::PushTextWrapPos(innerSize.x);
-						ImGui::TextUnformatted(func.second.expression.c_str());
-						ImGui::PopTextWrapPos();
-					}
-					ImGui::EndTable();
-				}
-			}
-			ImGui::End();
-		}
-
-		if(state.showVariables){
-			ImGui::SetNextWindowSize(outerSize, ImGuiCond_Once);
-			ImGui::SetNextWindowSizeConstraints(ImVec2(outerSize.x, 0), ImVec2(outerSize.x, FLT_MAX));
-			if (ImGui::Begin("Variables", &state.showVariables, panelFlags)) {
-
-				// Options for display:
-				bool displayRowMajor = (style.format & Format::MAJOR_MASK) == Format::MAJOR_ROW_FLAG;
-				if(ImGui::Checkbox("Row major matrices", &displayRowMajor)){
-					const Format majorFormat = displayRowMajor ? Format::MAJOR_ROW_FLAG : Format::MAJOR_COL_FLAG;
-					style.format = Format((style.format & ~Format::MAJOR_MASK) | majorFormat);
-					updateDoc = true;
-				}
-				ImGui::SameLine();
-				ImGui::PushItemWidth(120);
-				int base = (style.format & Format::BASE_MASK) >> 1;
-				if(ImGui::Combo("Integer base", &base, "Binary\0Octal\0Hexadecimal\0Decimal\0")){
-					const Format baseFormat = Format((base << 1) & Format::BASE_MASK);
-					style.format = Format((style.format & ~Format::BASE_MASK) | baseFormat);
-					updateDoc = true;
-				}
-				ImGui::PopItemWidth();
-
-				const ImVec2 innerSize(ImGui::GetWindowSize().x - 25, 0);
-				if(ImGui::BeginTable("##VariablesTable", 2, tableFlags, innerSize)){
-					ImGui::TableSetupColumn("Name");
-					ImGui::TableSetupColumn("Value");
-					ImGui::TableHeadersRow();
-
-					for (const auto& var : calculator.variables()) {
-						ImGui::TableNextColumn();
-
-						const float rowHeight = var.second.count * baseHeight;
-						if (ImGui::Selectable(var.first.c_str(), false, selectFlags, ImVec2(0, rowHeight))){
-							// Register text to insert, will be done in the text field conitnuous callback.
-							state.shouldInsert = true;
-							state.textToInsert = var.first;
-							shouldFocusTextField = true;
-						}
-
-						ImGui::TableNextColumn();
-						ImGui::TextUnformatted(var.second.value.c_str());
-					}
-					ImGui::EndTable();
-				}
-			}
-			ImGui::End();
-		}
-
-		if(state.showLibrary){
-			ImGui::SetNextWindowSize(outerSize, ImGuiCond_Once);
-			ImGui::SetNextWindowSizeConstraints(ImVec2(outerSize.x, 0), ImVec2(outerSize.x, FLT_MAX));
-			if(ImGui::Begin("Library", &state.showLibrary, panelFlags)) {
-
-				const ImVec2 innerSize(ImGui::GetWindowSize().x - 25, 0);
-
-				if(ImGui::BeginTabBar("Library elements")) {
-
-					if(ImGui::BeginTabItem("Functions")) {
-
-						if(ImGui::BeginTable("##LibTableFunctions", 2, tableFlags, innerSize)){
-							ImGui::TableSetupColumn("Name");
-							ImGui::TableSetupColumn("Parameters");
-							ImGui::TableHeadersRow();
-							for (const auto& func : calculator.stdlib()) {
-								ImGui::TableNextColumn();
-
-								if (ImGui::Selectable(func.second.name.c_str(), false, selectFlags, ImVec2(0, baseHeight))){
-									// Register text to insert, will be done in the text field conitnuous callback.
-									state.shouldInsert = true;
-									state.textToInsert = func.second.name + "()";
-									shouldFocusTextField = true;
-								}
-								ImGui::TableNextColumn();
-								ImGui::TextUnformatted(func.second.expression.c_str());
+							if (ImGui::Selectable(func.second.name.c_str(), false, selectFlags, ImVec2(0, baseHeight))){
+								// Register text to insert, will be done in the text field continuous callback.
+								state.shouldInsert = true;
+								state.textToInsert = func.second.name;
+								shouldFocusTextField = true;
 							}
-							ImGui::EndTable();
+							ImGui::TableNextColumn();
+							ImGui::PushTextWrapPos(innerSize.x);
+							ImGui::TextUnformatted(func.second.expression.c_str());
+							ImGui::PopTextWrapPos();
 						}
-
-						ImGui::EndTabItem();
+						ImGui::EndTable();
 					}
-
-					if(ImGui::BeginTabItem("Constants")) {
-
-						if(ImGui::BeginTable("##ConstantTable", 2, tableFlags, innerSize)){
-							ImGui::TableSetupColumn("Name");
-							ImGui::TableSetupColumn("Value");
-							ImGui::TableHeadersRow();
-
-							for (const auto& var : calculator.constants()) {
-								ImGui::TableNextColumn();
-
-								const float rowHeight = var.second.count * baseHeight;
-								if (ImGui::Selectable(var.first.c_str(), false, selectFlags, ImVec2(0, rowHeight))){
-									state.shouldInsert = true;
-									state.textToInsert = var.first;
-									shouldFocusTextField = true;
-								}
-
-								ImGui::TableNextColumn();
-								ImGui::TextUnformatted(var.second.value.c_str());
-							}
-							ImGui::EndTable();
-						}
-
-						ImGui::EndTabItem();
-					}
-					ImGui::EndTabBar();
 				}
-
-
+				ImGui::End();
 			}
-			ImGui::End();
-		}
 
-		if(updateDoc){
-			calculator.updateDocumentation(style.format);
+			if(state.showVariables){
+				ImGui::SetNextWindowSize(outerSize, ImGuiCond_Once);
+				ImGui::SetNextWindowSizeConstraints(ImVec2(outerSize.x, 0), ImVec2(outerSize.x, FLT_MAX));
+				if (ImGui::Begin("Variables", &state.showVariables, panelFlags)) {
+
+					// Options for display:
+					bool displayRowMajor = (style.format & Format::MAJOR_MASK) == Format::MAJOR_ROW_FLAG;
+					if(ImGui::Checkbox("Row major matrices", &displayRowMajor)){
+						const Format majorFormat = displayRowMajor ? Format::MAJOR_ROW_FLAG : Format::MAJOR_COL_FLAG;
+						style.format = Format((style.format & ~Format::MAJOR_MASK) | majorFormat);
+						updateDoc = true;
+					}
+					ImGui::SameLine();
+					ImGui::PushItemWidth(120);
+					int base = (style.format & Format::BASE_MASK) >> 1;
+					if(ImGui::Combo("Integer base", &base, "Binary\0Octal\0Hexadecimal\0Decimal\0")){
+						const Format baseFormat = Format((base << 1) & Format::BASE_MASK);
+						style.format = Format((style.format & ~Format::BASE_MASK) | baseFormat);
+						updateDoc = true;
+					}
+					ImGui::PopItemWidth();
+
+					const ImVec2 innerSize(ImGui::GetWindowSize().x - 25, 0);
+					if(ImGui::BeginTable("##VariablesTable", 2, tableFlags, innerSize)){
+						ImGui::TableSetupColumn("Name");
+						ImGui::TableSetupColumn("Value");
+						ImGui::TableHeadersRow();
+
+						for (const auto& var : calculator.variables()) {
+							ImGui::TableNextColumn();
+
+							const float rowHeight = var.second.count * baseHeight;
+							if (ImGui::Selectable(var.first.c_str(), false, selectFlags, ImVec2(0, rowHeight))){
+								// Register text to insert, will be done in the text field conitnuous callback.
+								state.shouldInsert = true;
+								state.textToInsert = var.first;
+								shouldFocusTextField = true;
+							}
+
+							ImGui::TableNextColumn();
+							ImGui::TextUnformatted(var.second.value.c_str());
+						}
+						ImGui::EndTable();
+					}
+				}
+				ImGui::End();
+			}
+
+			if(state.showLibrary){
+				ImGui::SetNextWindowSize(outerSize, ImGuiCond_Once);
+				ImGui::SetNextWindowSizeConstraints(ImVec2(outerSize.x, 0), ImVec2(outerSize.x, FLT_MAX));
+				if(ImGui::Begin("Library", &state.showLibrary, panelFlags)) {
+
+					const ImVec2 innerSize(ImGui::GetWindowSize().x - 25, 0);
+
+					if(ImGui::BeginTabBar("Library elements")) {
+
+						if(ImGui::BeginTabItem("Functions")) {
+
+							if(ImGui::BeginTable("##LibTableFunctions", 2, tableFlags, innerSize)){
+								ImGui::TableSetupColumn("Name");
+								ImGui::TableSetupColumn("Parameters");
+								ImGui::TableHeadersRow();
+								for (const auto& func : calculator.stdlib()) {
+									ImGui::TableNextColumn();
+
+									if (ImGui::Selectable(func.second.name.c_str(), false, selectFlags, ImVec2(0, baseHeight))){
+										// Register text to insert, will be done in the text field conitnuous callback.
+										state.shouldInsert = true;
+										state.textToInsert = func.second.name + "()";
+										shouldFocusTextField = true;
+									}
+									ImGui::TableNextColumn();
+									ImGui::TextUnformatted(func.second.expression.c_str());
+								}
+								ImGui::EndTable();
+							}
+
+							ImGui::EndTabItem();
+						}
+
+						if(ImGui::BeginTabItem("Constants")) {
+
+							if(ImGui::BeginTable("##ConstantTable", 2, tableFlags, innerSize)){
+								ImGui::TableSetupColumn("Name");
+								ImGui::TableSetupColumn("Value");
+								ImGui::TableHeadersRow();
+
+								for (const auto& var : calculator.constants()) {
+									ImGui::TableNextColumn();
+
+									const float rowHeight = var.second.count * baseHeight;
+									if (ImGui::Selectable(var.first.c_str(), false, selectFlags, ImVec2(0, rowHeight))){
+										state.shouldInsert = true;
+										state.textToInsert = var.first;
+										shouldFocusTextField = true;
+									}
+
+									ImGui::TableNextColumn();
+									ImGui::TextUnformatted(var.second.value.c_str());
+								}
+								ImGui::EndTable();
+							}
+
+							ImGui::EndTabItem();
+						}
+						ImGui::EndTabBar();
+					}
+
+
+				}
+				ImGui::End();
+			}
+
+			if(updateDoc){
+				calculator.updateDocumentation(style.format);
+			}
+
 		}
+		
 		// Render the interface.
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

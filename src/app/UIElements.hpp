@@ -64,6 +64,8 @@ struct UIState {
 	bool showFunctions = false;
 	bool showLibrary = false;
 
+	bool evaluatePartial = false;
+
 	void saveToStream(std::ostream& str) const;
 
 	void loadFromStream(std::istream& str);
