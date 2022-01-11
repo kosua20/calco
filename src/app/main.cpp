@@ -404,7 +404,7 @@ int main(int argc, char** argv){
 
 	while(!glfwWindowShouldClose(window)) {
 
-		glfwPollEvents();
+		glfwWaitEventsTimeout(0.1);
 
 		// Screen resolution.
 		glfwGetWindowSize(window, &winW, &winH);
@@ -540,7 +540,7 @@ int main(int argc, char** argv){
 			if(selectedLine >= 0){
 				// Store selected line in clipboard.
 				const std::string& newContent = state.lines[selectedLine].fullText;
-				ImGui::SetClipboardText(newContent.c_str());
+				//ImGui::SetClipboardText(newContent.c_str());
 
 				if(ImGui::IsMouseDoubleClicked(0)){
 					// Register text to insert, will be done in the text field conitnuous callback.
@@ -630,7 +630,7 @@ int main(int argc, char** argv){
 						}
 
 					}
-
+					glfwPostEmptyEvent();
 				}
 				shouldFocusTextField = true;
 			}
