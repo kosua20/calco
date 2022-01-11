@@ -265,6 +265,21 @@ bool Calculator::evaluate(const std::string& input, Value& output, std::vector<W
 	return true;
 }
 
+bool Calculator::evaluateFunction(const std::string& name, const std::vector<Value>& args, Value& output){
+	
+	// Build a function call.
+	const size_t argCount = args.size();
+	std::vector<Expression::Ptr> argValues(argCount);
+	for(size_t aid = 0; aid < argCount; ++aid){
+		argValues[aid] = std::make_shared<Literal>(args[aid], aid);
+	}
+	const auto func = std::make_shared<FunctionCall>(name, argValues, 0, 1);
+	Format format = Format::INTERNAL;
+	ExpEval eval(_globals, _stdlib, format);
+	output = func->evaluate(eval);
+	return true;
+}
+
 void Calculator::clear(){
 	_globals = Scope();
 	_funcCounter = 0;

@@ -62,6 +62,8 @@ public:
 
 	bool evaluate(const std::string& input, Value& output, std::vector<Word>& info, Format& format, bool temporary);
 
+	bool evaluateFunction(const std::string& name, const std::vector<Value>& args, Value& output);
+	
 	void clear();
 
 	void updateDocumentation(Format format);
