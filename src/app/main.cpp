@@ -22,6 +22,53 @@
 #include "font_data_Inconsolata.h"
 #include "font_data_Lato.h"
 
+struct FunctionGraph {
+	std::vector<float> values;
+	std::vector<Value> args;
+	std::vector<glm::vec2> argsRanges;
+	ImVec4 color = ImVec4(1,0,0,1);
+	bool show = false;
+	bool dirty = true;
+	bool invalid = false;
+};
+
+struct GraphState {
+	ImPlotRect currentRect = ImPlotRect(0,1,0,1);
+	bool updateRect = true;
+	int totalCount = 0;
+	std::vector<float> xs;
+	std::unordered_map<std::string, FunctionGraph> functions;
+
+	const uint sampleCount = 100;
+
+	void addOrUpdateFunction(const std::string& name, const Documentation::Function& func){
+		// Did the function already exist?
+		const bool existing = functions.count(name) != 0;
+
+		// Retrieve or create function graph infos.
+		FunctionGraph& funcGraph = functions[name];
+		funcGraph.values.clear();
+		// Reset arguments and their ranges.
+		const size_t argCount = func.arguments.size();
+		funcGraph.args.resize(argCount);
+		funcGraph.argsRanges.resize(argCount);
+		for(size_t aid = 0; aid < argCount; ++aid){
+			funcGraph.args[aid] = 0.0f;
+			funcGraph.argsRanges[aid] = glm::vec2(0.0f, 1.0f);
+		}
+
+		// If existing function graph, preserve set color, else revert.
+		if(!existing){
+			funcGraph.color = ImPlot::GetColormapColor(totalCount++);
+		}
+
+		funcGraph.show = false;
+		funcGraph.dirty = true;
+		funcGraph.invalid = false;
+
+	}
+
+};
 
 GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 
@@ -396,7 +443,6 @@ int main(int argc, char** argv){
 	UIStyle style;
 	style.loadFromFile(config.settingsPath);
 
-	UIState state;
 	GLFWwindow* window = createWindow(830, 620, style);
 
 	if(!window){
@@ -414,13 +460,28 @@ int main(int argc, char** argv){
 	memset(buffer, '\0', sizeof(buffer));
 
 	UIStyle tmpStyle;
-
+	UIState state;
+	GraphState grapher;
 	Calculator calculator;
 	
 	// Save/restore calculator state (save all internal state + formatted output)
 	loadStateFromFile(config.historyPath, state, calculator);
 	// Apply style.
 	calculator.updateDocumentation(style.format);
+	// Recreate graph definitions of save functions.
+	for(const auto& func : calculator.functions()){
+		grapher.addOrUpdateFunction(func.first, func.second);
+		FunctionGraph& graph = grapher.functions[func.first];
+		// Test the validity of the function.
+		Value outRaw, outFloat;
+		bool success = false;
+		if(calculator.evaluateFunction(func.first, graph.args, outRaw)){
+			if(outRaw.convert(Value::Type::FLOAT, outFloat)){
+				success = true;
+			}
+		}
+		graph.invalid = !success;
+	}
 
 	bool shouldFocusTextField = true;
 
@@ -445,6 +506,7 @@ int main(int argc, char** argv){
 
 		bool openPopup = false;
 		bool updateDoc = false;
+		bool updateGraph = false;
 
 		// Menus and settings
 		{
@@ -505,7 +567,9 @@ int main(int argc, char** argv){
 					ImGui::MenuItem("Variables", nullptr, &state.showVariables, true);
 					ImGui::MenuItem("Library", nullptr, &state.showLibrary, true);
 					ImGui::Separator();
-					ImGui::MenuItem("Grapher", nullptr, &state.showGrapher, true);
+					if(ImGui::MenuItem("Grapher", nullptr, &state.showGrapher, true)){
+						updateGraph = state.showGrapher;
+					}
 					ImGui::EndMenu();
 				}
 
@@ -637,6 +701,11 @@ int main(int argc, char** argv){
 						state.lines.emplace_back( UILine::OUTPUT, result.str);
 						state.lines.back().words.emplace_back(result.str, Calculator::Word::FUNCTION);
 						state.lines.back().words.emplace_back(" defined", Calculator::Word::LITERAL);
+
+						const std::string& name = result.str;
+						grapher.addOrUpdateFunction(name, calculator.functions().at(name));
+						// If the graph window is opened, mark the function as showned.
+						grapher.functions[name].show = state.showGrapher;
 
 					} else {
 						
@@ -886,56 +955,167 @@ int main(int argc, char** argv){
 
 		}
 
-		// Graphing.
-
-		static ImPlotRect currentRect = ImPlotRect(0,1,0,1);
-		static bool updateRect = true;
-		static std::vector<float> xs(100);
-		static std::vector<float> ys(100);
-
-		if(updateRect){
-			for(int i = 0; i < 100; ++i){
-				xs[i] = float(i)/100.0f * (currentRect.X.Max - currentRect.X.Min) + currentRect.X.Min;
-				ys[i] = sin(xs[i]);
-			}
-			glfwPostEmptyEvent();
-		}
+		// Graphing
 
 		if(state.showGrapher){
+
+			// First, check that all functions are registered.
+			assert(calculator.functions().size() == grapher.functions.size());
+#ifdef _DEBUG
+			for(const auto& fun : grapher.functions){
+				assert(calculator.functions().count(fun) == 1);
+			}
+#endif
+
 			ImGui::SetNextWindowPos(ImVec2(0.0f, menuBarHeight));
 			ImGui::SetNextWindowSize(ImVec2(float(winW), float(winH)- menuBarHeight - heightToReserve ));
 			if(ImGui::Begin("Grapher", &state.showGrapher)){
+
+				// If the graph region was resized, update the abcisse samples.
+				/// TODO: do it when displaying the graph window for the first time too.
+				if(grapher.updateRect){
+					grapher.xs.resize(grapher.sampleCount);
+					for(uint i = 0; i < grapher.sampleCount; ++i){
+						grapher.xs[i] = float(i)/float(grapher.sampleCount-1) * (grapher.currentRect.X.Max - grapher.currentRect.X.Min) + grapher.currentRect.X.Min;
+					}
+					grapher.updateRect = false;
+					// Mark all graphs as dirty.
+					for(auto& func : grapher.functions){
+						func.second.dirty = true;
+					}
+				}
+				// Buttons
+
+
 				// Left
 				{
-					ImGui::BeginChild("##Grapher Left panel", ImVec2(300, 0), true);
-					int id = 0;
-					for(const auto& func : calculator.functions()) {
-						ImVec4 color = ImPlot::GetColormapColor(id);
-						++id;
+					const float panelWidth = 340.0f;
+					ImGui::BeginChild("##Grapher Left panel", ImVec2(panelWidth, 0), true);
+					ImGui::Button("Show/hide all");
+					ImGui::SameLine();
+					ImGui::Button("Show/hide invalid");
+
+					for(auto& func : grapher.functions) {
+						FunctionGraph& graph = func.second;
+						const Documentation::Function& ref = calculator.functions().at(func.first);
+						const size_t argCount = graph.args.size();
+
+						ImGui::PushID(func.first.c_str());
+
+						ImGui::BeginDisabled(graph.invalid);
+
+						// First, enable/disable checkbox.
+						ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0,0.5));
+						ImGui::Checkbox("##checkbox", &graph.show);
+						ImGui::PopStyleVar();
+
+						ImGui::SameLine();
+
+						// Then the name, arguments and expression of the function.
+						const ImVec4 color = graph.invalid ? ImVec4(0.5,0.5,0.5,1.0) : graph.color;
+
 						ImGui::PushStyleColor(ImGuiCol_Text, color);
-						ImGui::TextUnformatted(func.first.c_str());
+						const float wrapPos = panelWidth - 2*ImGui::GetFrameHeightWithSpacing();
+						ImGui::PushTextWrapPos(wrapPos);
+						ImGui::TextWrapped("%s = %s", ref.name.c_str(), ref.expression.c_str());
+						ImGui::PopTextWrapPos();
 						ImGui::PopStyleColor();
+
+						ImGui::SameLine(wrapPos, 0);
+						ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0,0.5));
+						if(argCount > 1){
+							if(ImGui::ArrowButton("##popbutton", ImGuiDir_Down)){
+								ImGui::OpenPopup("Popbutton");
+							}
+						}
+						ImGui::SameLine(wrapPos + ImGui::GetFrameHeightWithSpacing(), 0);
+						ImGui::ColorEdit3("##color", &graph.color.x, ImGuiColorEditFlags_NoInputs);
+						ImGui::PopStyleVar();
+
+
+						if(ImGui::BeginPopup("Popbutton")){
+
+							for(size_t aid = 1; aid < argCount; ++aid){
+								float f = graph.args[aid].f;
+								const glm::vec2& range = graph.argsRanges[aid];
+								if(ImGui::SliderFloat(ref.arguments[aid].c_str(), &f, range.x, range.y)){
+									graph.dirty = true;
+									graph.args[aid].f = f;
+								}
+							}
+
+							ImGui::EndPopup();
+						}
+						// Then display sliders and ranges for all extra arguments.
+
+						ImGui::EndDisabled();
+						ImGui::PopID();
+
 					}
 					ImGui::EndChild();
 				}
-				ImGui::SameLine();
+
+				// Update functions.
+				for(auto& func : grapher.functions){
+					FunctionGraph& graph = func.second;
+					if(!graph.show){
+						continue;
+					}
+					if(!graph.dirty && (graph.values.size() == grapher.sampleCount)){
+						continue;
+					}
+
+					graph.values.resize(grapher.sampleCount);
+					for(uint sid = 0; sid < grapher.sampleCount; ++sid){
+						// Set the value of the first argument.
+						if(!graph.args.empty()){
+							graph.args[0] = grapher.xs[sid];
+						}
+						// Evaluate the function.
+						Value outRaw, outFloat;
+						if(!calculator.evaluateFunction(func.first, graph.args, outRaw)){
+							// Evaluation error, hide the function.
+							graph.show = false;
+							graph.invalid = true;
+							break;
+						}
+						// Convert to float
+						if(!outRaw.convert(Value::Type::FLOAT, outFloat)){
+							graph.show = false;
+							graph.invalid = true;
+							break;
+						}
+						graph.values[sid] = outFloat.f;
+					}
+					graph.dirty = false;
+					// We'll want the display to update.
+					glfwPostEmptyEvent();
+
+				}
 
 				// Right
+				ImGui::SameLine();
 				{
 					ImGui::BeginGroup();
-					ImGui::BeginChild("##Function view", ImVec2(0, 0)); // Leave room
-
-					 //ImGui::PlotLines("Test", vals, 6, 0, "test", 0.0f, 3.0f, ImVec2(400,300));
+					ImGui::BeginChild("##Function view", ImVec2(0, 0));
 
 					 if(ImPlot::BeginPlot("My Plot", ImVec2(-1,-1), ImPlotFlags_CanvasOnly | ImPlotFlags_AntiAliased)) {
-						// ImPlot::SetupAxis(ImAxis_X1, )
+
 						 ImPlot::SetupFinish();
-						 ImPlot::PlotLine("My Line Plot", xs.data(), ys.data(), 100);
-						// ImPlot::PlotLineG("My line", 1000);
+						 for(const auto& func : grapher.functions){
+							 const FunctionGraph& graph = func.second;
+							 if(!graph.show){
+								 continue;
+							 }
+							 ImPlot::PushStyleColor(ImPlotCol_Line, graph.color) ;
+							 ImPlot::PlotLine(func.first.c_str(), grapher.xs.data(), graph.values.data(), grapher.sampleCount);
+							 ImPlot::PopStyleColor();
+						 }
+
 						 ImPlotRect rect = ImPlot::GetPlotLimits();
-						 if(rect.X.Min != currentRect.X.Min || rect.X.Max != currentRect.X.Max){
-							 currentRect = rect;
-							 updateRect = true;
+						 if(rect.X.Min != grapher.currentRect.X.Min || rect.X.Max != grapher.currentRect.X.Max){
+							 grapher.currentRect = rect;
+							 grapher.updateRect = true;
 						 }
 						 ImPlot::EndPlot();
 					 }
