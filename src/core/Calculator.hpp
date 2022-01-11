@@ -9,6 +9,7 @@ public:
 	struct Function {
 		std::string name;
 		std::string expression;
+		std::vector<std::string> arguments;
 	};
 
 	struct Variable {

@@ -22,16 +22,19 @@ void Documentation::setFunc(const std::string& name, const std::shared_ptr<Funct
 	std::string expr = def->expr->evaluate(logger).str;
 	// Generate name with arguments, removing internal identifiers.
 	std::string fullName = def->name + "(";
-	bool first = true;
+	std::vector<std::string> args;
+	args.resize(def->args.size());
+
+	uint i = 0;
 	for(const auto& arg : def->args){
-		const std::string shortArg = arg.substr(0, arg.find_last_of('@'));
-		TextUtilities::replace(expr, arg, shortArg);
-		fullName += (first ? "" : ", ") + shortArg;
-		first = false;
+		args[i] = arg.substr(0, arg.find_last_of('@'));
+		TextUtilities::replace(expr, arg, args[i]);
+		fullName += (i == 0 ? "" : ", ") + args[i];
+		++i;
 	}
 	fullName += ")";
 
-	_functions[name] = { fullName, expr };
+	_functions[name] = { fullName, expr, args };
 }
 
 void Documentation::setLibrary(const FunctionsLibrary& library){
