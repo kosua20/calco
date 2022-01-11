@@ -63,6 +63,7 @@ struct UIState {
 	bool showVariables = false;
 	bool showFunctions = false;
 	bool showLibrary = false;
+	bool showGrapher = false;
 
 	bool evaluatePartial = false;
 

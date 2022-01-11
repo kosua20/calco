@@ -15,6 +15,7 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
+#include <implot/implot.h>
 
 #include <unordered_map>
 
@@ -59,7 +60,8 @@ GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 	glfwSwapInterval(1);
 
 	ImGui::CreateContext();
-
+	ImPlot::CreateContext();
+	
 	ImFontConfig fontLato = ImFontConfig();
 	fontLato.FontData = (void*)(fontDataLato);
 	fontLato.FontDataSize = size_fontDataLato;
@@ -125,6 +127,30 @@ GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 	colors[ImGuiCol_NavHighlight]           = ImVec4(0.73f, 0.73f, 0.73f, 1.00f);
 	colors[ImGuiCol_PopupBg]           		= ImVec4(0.15f, 0.15f, 0.15f, 0.94f);
 
+	ImPlot::StyleColorsLight();
+	ImPlotStyle& pstyle              = ImPlot::GetStyle();
+	pstyle.PlotPadding				 = ImVec2(6,6);
+	pstyle.LabelPadding				 = ImVec2(4,4);
+	ImVec4* pcolors                  = pstyle.Colors;
+	pcolors[ImPlotCol_Line]          = IMPLOT_AUTO_COL;
+	pcolors[ImPlotCol_Fill]          = IMPLOT_AUTO_COL;
+	pcolors[ImPlotCol_MarkerOutline] = IMPLOT_AUTO_COL;
+	pcolors[ImPlotCol_MarkerFill]    = IMPLOT_AUTO_COL;
+	pcolors[ImPlotCol_ErrorBar]      = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+	pcolors[ImPlotCol_FrameBg]       = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+	pcolors[ImPlotCol_PlotBg]        = ImVec4(0.92f, 0.92f, 0.95f, 1.00f);
+	pcolors[ImPlotCol_PlotBorder]    = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+	pcolors[ImPlotCol_LegendBg]      = ImVec4(0.92f, 0.92f, 0.95f, 1.00f);
+	pcolors[ImPlotCol_LegendBorder]  = ImVec4(0.80f, 0.81f, 0.85f, 1.00f);
+	pcolors[ImPlotCol_LegendText]    = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+	pcolors[ImPlotCol_TitleText]     = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+	pcolors[ImPlotCol_InlayText]     = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+	pcolors[ImPlotCol_AxisText]      = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+	pcolors[ImPlotCol_AxisGrid]      = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+	pcolors[ImPlotCol_AxisBgHovered] = ImVec4(0.92f, 0.92f, 0.95f, 1.00f);
+	pcolors[ImPlotCol_AxisBgActive]  = ImVec4(0.92f, 0.92f, 0.95f, 0.75f);
+	pcolors[ImPlotCol_Selection]     = ImVec4(1.00f, 0.65f, 0.00f, 1.00f);
+	pcolors[ImPlotCol_Crosshairs]    = ImVec4(0.23f, 0.10f, 0.64f, 0.50f);
 	return window;
 }
 
@@ -478,6 +504,8 @@ int main(int argc, char** argv){
 					ImGui::MenuItem("Functions", nullptr, &state.showFunctions, true);
 					ImGui::MenuItem("Variables", nullptr, &state.showVariables, true);
 					ImGui::MenuItem("Library", nullptr, &state.showLibrary, true);
+					ImGui::Separator();
+					ImGui::MenuItem("Grapher", nullptr, &state.showGrapher, true);
 					ImGui::EndMenu();
 				}
 
@@ -857,6 +885,73 @@ int main(int argc, char** argv){
 			}
 
 		}
+
+		// Graphing.
+
+		static ImPlotRect currentRect = ImPlotRect(0,1,0,1);
+		static bool updateRect = true;
+		static std::vector<float> xs(100);
+		static std::vector<float> ys(100);
+
+		if(updateRect){
+			for(int i = 0; i < 100; ++i){
+				xs[i] = float(i)/100.0f * (currentRect.X.Max - currentRect.X.Min) + currentRect.X.Min;
+				ys[i] = sin(xs[i]);
+			}
+			glfwPostEmptyEvent();
+		}
+
+		if(state.showGrapher){
+			ImGui::SetNextWindowPos(ImVec2(0.0f, menuBarHeight));
+			ImGui::SetNextWindowSize(ImVec2(float(winW), float(winH)- menuBarHeight - heightToReserve ));
+			if(ImGui::Begin("Grapher", &state.showGrapher)){
+				// Left
+				{
+					ImGui::BeginChild("##Grapher Left panel", ImVec2(300, 0), true);
+					int id = 0;
+					for(const auto& func : calculator.functions()) {
+						ImVec4 color = ImPlot::GetColormapColor(id);
+						++id;
+						ImGui::PushStyleColor(ImGuiCol_Text, color);
+						ImGui::TextUnformatted(func.first.c_str());
+						ImGui::PopStyleColor();
+					}
+					ImGui::EndChild();
+				}
+				ImGui::SameLine();
+
+				// Right
+				{
+					ImGui::BeginGroup();
+					ImGui::BeginChild("##Function view", ImVec2(0, 0)); // Leave room
+
+					 //ImGui::PlotLines("Test", vals, 6, 0, "test", 0.0f, 3.0f, ImVec2(400,300));
+
+					 if(ImPlot::BeginPlot("My Plot", ImVec2(-1,-1), ImPlotFlags_CanvasOnly | ImPlotFlags_AntiAliased)) {
+						// ImPlot::SetupAxis(ImAxis_X1, )
+						 ImPlot::SetupFinish();
+						 ImPlot::PlotLine("My Line Plot", xs.data(), ys.data(), 100);
+						// ImPlot::PlotLineG("My line", 1000);
+						 ImPlotRect rect = ImPlot::GetPlotLimits();
+						 if(rect.X.Min != currentRect.X.Min || rect.X.Max != currentRect.X.Max){
+							 currentRect = rect;
+							 updateRect = true;
+						 }
+						 ImPlot::EndPlot();
+					 }
+
+
+					ImGui::EndChild();
+					ImGui::EndGroup();
+
+
+				}
+
+
+
+			}
+			ImGui::End();
+		}
 		
 		// Render the interface.
 		ImGui::Render();
@@ -873,6 +968,7 @@ int main(int argc, char** argv){
 	// Cleanup.
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
+	ImPlot::DestroyContext();
 	ImGui::DestroyContext();
 
 	sr_gui_cleanup();
