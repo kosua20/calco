@@ -41,7 +41,7 @@ void Documentation::setLibrary(const FunctionsLibrary& library){
 	std::unordered_map<std::string, std::string> funcList;
 	library.populateDescriptions(funcList);
 	for(const auto& func : funcList){
-		_stdlib[func.first] = {func.first, func.second};
+		_stdlib[func.first] = {func.first, func.second, {}};
 	}
 	// Also do constants here.
 	for(const auto& constant : MathConstants){
