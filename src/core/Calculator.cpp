@@ -274,7 +274,7 @@ bool Calculator::evaluateFunction(const std::string& name, const std::vector<Val
 	const size_t argCount = args.size();
 	std::vector<Expression::Ptr> argValues(argCount);
 	for(size_t aid = 0; aid < argCount; ++aid){
-		argValues[aid] = std::make_shared<Literal>(args[aid], aid);
+		argValues[aid] = std::make_shared<Literal>(args[aid], (long)aid);
 	}
 	const auto func = std::make_shared<FunctionCall>(name, argValues, 0, 1);
 	Format format = Format::INTERNAL;
