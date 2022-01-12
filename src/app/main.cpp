@@ -23,21 +23,23 @@
 #include "font_data_Lato.h"
 
 struct FunctionGraph {
-	std::vector<float> values;
+	std::vector<double> values;
 	std::vector<Value> args;
 	std::vector<glm::vec2> argsRanges;
 	ImVec4 color = ImVec4(1,0,0,1);
 	bool show = false;
 	bool dirty = true;
 	bool invalid = false;
+	bool showArgsPanel = false;
 };
 
 struct GraphState {
-	ImPlotRect currentRect = ImPlotRect(0,1,0,1);
-	bool updateRect = true;
-	int totalCount = 0;
-	std::vector<float> xs;
+	std::vector<double> xs;
 	std::unordered_map<std::string, FunctionGraph> functions;
+	ImPlotRect currentRect = ImPlotRect(0, 1, 0, 1);
+	int totalCount = 0;
+	bool updateRect = true;
+	bool hideInvalids = false;
 
 	const uint sampleCount = 100;
 
@@ -553,6 +555,8 @@ int main(int argc, char** argv){
 															 SR_GUI_MESSAGE_LEVEL_WARN, "Yes", "No", nullptr);
 						if(result == SR_GUI_BUTTON0){
 							calculator.clear();
+							grapher.totalCount = 0;
+							grapher.functions.clear();
 						}
 					}
 					ImGui::Separator();
@@ -961,9 +965,9 @@ int main(int argc, char** argv){
 
 			// First, check that all functions are registered.
 			assert(calculator.functions().size() == grapher.functions.size());
-#ifdef _DEBUG
+#ifdef DEBUG
 			for(const auto& fun : grapher.functions){
-				assert(calculator.functions().count(fun) == 1);
+				assert(calculator.functions().count(fun.first) == 1);
 			}
 #endif
 
@@ -971,12 +975,11 @@ int main(int argc, char** argv){
 			ImGui::SetNextWindowSize(ImVec2(float(winW), float(winH)- menuBarHeight - heightToReserve ));
 			if(ImGui::Begin("Grapher", &state.showGrapher)){
 
-				// If the graph region was resized, update the abcisse samples.
-				/// TODO: do it when displaying the graph window for the first time too.
+				// If the graph region was resized, update the abscisse samples.
 				if(grapher.updateRect){
 					grapher.xs.resize(grapher.sampleCount);
 					for(uint i = 0; i < grapher.sampleCount; ++i){
-						grapher.xs[i] = float(i)/float(grapher.sampleCount-1) * (grapher.currentRect.X.Max - grapher.currentRect.X.Min) + grapher.currentRect.X.Min;
+						grapher.xs[i] = double(i)/ double(grapher.sampleCount-1) * (grapher.currentRect.X.Max - grapher.currentRect.X.Min) + grapher.currentRect.X.Min;
 					}
 					grapher.updateRect = false;
 					// Mark all graphs as dirty.
@@ -984,75 +987,126 @@ int main(int argc, char** argv){
 						func.second.dirty = true;
 					}
 				}
-				// Buttons
-
-
 				// Left
 				{
 					const float panelWidth = 340.0f;
-					ImGui::BeginChild("##Grapher Left panel", ImVec2(panelWidth, 0), true);
-					ImGui::Button("Show/hide all");
-					ImGui::SameLine();
-					ImGui::Button("Show/hide invalid");
+					ImGui::BeginGroup();
 
+					ImGui::Text("Show:");
+					ImGui::SameLine();
+
+					ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3, 0.5));
+					if (ImGui::Button("All")) {
+						for (auto& func : grapher.functions) {
+							func.second.show = !func.second.invalid;
+						}
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("None")) {
+						for (auto& func : grapher.functions) {
+							func.second.show = false;
+						}
+					}
+					ImGui::SameLine();
+					ImGui::Checkbox("Hide errors", &grapher.hideInvalids);
+					ImGui::PopStyleVar();
+
+					ImGui::BeginChild("##Grapher Left panel", ImVec2(panelWidth, 0), true);
+					
 					for(auto& func : grapher.functions) {
 						FunctionGraph& graph = func.second;
 						const Documentation::Function& ref = calculator.functions().at(func.first);
 						const size_t argCount = graph.args.size();
+						// Skip invalid if requested.
+						if (grapher.hideInvalids && graph.invalid) {
+							continue;
+						}
 
 						ImGui::PushID(func.first.c_str());
 
 						ImGui::BeginDisabled(graph.invalid);
 
-						// First, enable/disable checkbox.
-						ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0,0.5));
-						ImGui::Checkbox("##checkbox", &graph.show);
+						// Color selector
+						ImVec4 color = graph.invalid ? ImVec4(0.3f, 0.3f, 0.3f, 1.0f) : (graph.show ? graph.color : ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
+						ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0.5));
+						ImGui::ColorEdit3("##color", graph.invalid ? &color.x : &graph.color.x, ImGuiColorEditFlags_NoInputs);
 						ImGui::PopStyleVar();
 
 						ImGui::SameLine();
 
 						// Then the name, arguments and expression of the function.
-						const ImVec4 color = graph.invalid ? ImVec4(0.5,0.5,0.5,1.0) : graph.color;
+						
 
 						ImGui::PushStyleColor(ImGuiCol_Text, color);
-						const float wrapPos = panelWidth - 2*ImGui::GetFrameHeightWithSpacing();
+						const float wrapPos = panelWidth - ImGui::GetFrameHeightWithSpacing();
 						ImGui::PushTextWrapPos(wrapPos);
+						// Selectable row to show/hide
+						if (ImGui::Selectable("##id", false, ImGuiSelectableFlags_AllowItemOverlap)) {
+							graph.show = !graph.show;
+						}
+						ImGui::SameLine(0, 0);
 						ImGui::TextWrapped("%s = %s", ref.name.c_str(), ref.expression.c_str());
 						ImGui::PopTextWrapPos();
 						ImGui::PopStyleColor();
 
-						ImGui::SameLine(wrapPos, 0);
-						ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0,0.5));
+						
 						if(argCount > 1){
-							if(ImGui::ArrowButton("##popbutton", ImGuiDir_Down)){
-								ImGui::OpenPopup("Popbutton");
+							ImGui::SameLine(wrapPos, 0);
+							ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0.5));
+							if(ImGui::ArrowButton("##valuesButton", graph.showArgsPanel ? ImGuiDir_Up : ImGuiDir_Down)){
+								graph.showArgsPanel = !graph.showArgsPanel;
 							}
-						}
-						ImGui::SameLine(wrapPos + ImGui::GetFrameHeightWithSpacing(), 0);
-						ImGui::ColorEdit3("##color", &graph.color.x, ImGuiColorEditFlags_NoInputs);
-						ImGui::PopStyleVar();
+							ImGui::PopStyleVar();
 
+							if (graph.showArgsPanel) {
+								// Draw sliders for each extra argument.
+								for (size_t aid = 1; aid < argCount; ++aid) {
+									ImGui::PushID(ref.arguments[aid].c_str());
 
-						if(ImGui::BeginPopup("Popbutton")){
+									float f = float(graph.args[aid].f);
+									glm::vec2& range = graph.argsRanges[aid];
 
-							for(size_t aid = 1; aid < argCount; ++aid){
-								float f = graph.args[aid].f;
-								const glm::vec2& range = graph.argsRanges[aid];
-								if(ImGui::SliderFloat(ref.arguments[aid].c_str(), &f, range.x, range.y)){
-									graph.dirty = true;
-									graph.args[aid].f = f;
+									ImGui::AlignTextToFramePadding();
+									ImGui::TextUnformatted(ref.arguments[aid].c_str());
+									ImGui::SameLine();
+
+									ImGui::PushItemWidth(50);
+									if (ImGui::DragFloat("##Min", &range.x, 1.f, -FLT_MAX, range.y, "%.2f", 0)) {
+										if (range.x > range.y) {
+											std::swap(range.x, range.y);
+										}
+									}
+
+									ImGui::PushItemWidth(150);
+									ImGui::SameLine();
+									if (ImGui::SliderFloat("##slider", &f, range.x, range.y)) {
+										graph.dirty = true;
+										graph.args[aid].f = double(f);
+									}
+									ImGui::PopItemWidth();
+									ImGui::SameLine();
+
+									if (ImGui::DragFloat("##Max", &range.y, 1.f, range.x, FLT_MAX, "%.2f", 0)) {
+										if (range.x > range.y) {
+											std::swap(range.x, range.y);
+										}
+									}
+									ImGui::PopItemWidth();
+
+									ImGui::PopID();
+
 								}
 							}
-
-							ImGui::EndPopup();
+							
 						}
-						// Then display sliders and ranges for all extra arguments.
 
 						ImGui::EndDisabled();
+						ImGui::Separator();
 						ImGui::PopID();
 
 					}
 					ImGui::EndChild();
+					ImGui::EndGroup();
 				}
 
 				// Update functions.
@@ -1097,9 +1151,10 @@ int main(int argc, char** argv){
 				ImGui::SameLine();
 				{
 					ImGui::BeginGroup();
-					ImGui::BeginChild("##Function view", ImVec2(0, 0));
 
-					 if(ImPlot::BeginPlot("My Plot", ImVec2(-1,-1), ImPlotFlags_CanvasOnly | ImPlotFlags_AntiAliased)) {
+					ImGui::BeginChild("##Function view", ImVec2(0, 0));
+					
+					 if(ImPlot::BeginPlot("My Plot", ImVec2(-1,-1), ImPlotFlags_NoTitle | ImPlotFlags_NoLegend |  ImPlotFlags_AntiAliased)) {
 
 						 ImPlot::SetupFinish();
 						 for(const auto& func : grapher.functions){
