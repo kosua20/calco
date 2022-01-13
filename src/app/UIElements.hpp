@@ -1,3 +1,4 @@
+#pragma once
 #include "core/Common.hpp"
 #include "core/Calculator.hpp"
 
