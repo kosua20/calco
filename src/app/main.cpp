@@ -20,8 +20,8 @@
 
 #include <unordered_map>
 
-#include "font_data_Inconsolata.h"
-#include "font_data_Lato.h"
+#include "fonts/font_data_Inconsolata.h"
+#include "fonts/font_data_Lato.h"
 
 
 GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
