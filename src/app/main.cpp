@@ -446,7 +446,6 @@ int main(int argc, char** argv){
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		ImGui::ShowDemoWindow();
 		glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
@@ -521,8 +520,8 @@ int main(int argc, char** argv){
 				}
 
 				if(ImGui::BeginMenu("About")){
-					ImGui::Text( "Calco - © Simon Rodriguez 2021" );
-					ImGui::Text( "version 1.0.0" );
+					ImGui::Text( "%s", versionMessage.c_str() );
+					ImGui::Text( "© Simon Rodriguez 2022" );
 					ImGui::EndMenu();
 				}
 				ImGui::EndMainMenuBar();

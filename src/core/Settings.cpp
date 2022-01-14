@@ -30,7 +30,7 @@ CalcoConfig::CalcoConfig(const std::vector<std::string> & argv) : Config(argv) {
 			license = true;
 		}
 
-		if(arg.key == "calco") {
+		if(arg.key == "coucou") {
 			bonus = true;
 		}
 
