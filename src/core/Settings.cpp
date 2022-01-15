@@ -37,8 +37,8 @@ CalcoConfig::CalcoConfig(const std::vector<std::string> & argv) : Config(argv) {
 	}
 
 	registerSection("Settings");
-	registerArgument("settings", "s", "Path to display settings", "file path");
-	registerArgument("history", "h", "Path to a history file", "file path");
+	registerArgument("settings", "s", "Path to display settings (or use CALCO_SETTINGS environment variable)", "file path");
+	registerArgument("history", "h", "Path to a history file (or use CALCO_HISTORY environment variable)", "file path");
 
 	registerSection("Infos");
 	registerArgument("version", "v", "Displays the current Calco version.");
