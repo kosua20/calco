@@ -41,7 +41,7 @@ CalcoConfig::CalcoConfig(const std::vector<std::string> & argv) : Config(argv) {
 	registerArgument("history", "h", "Path to a history file", "file path");
 
 	registerSection("Infos");
-	registerArgument("version", "v", "Displays the current Quantizer version.");
+	registerArgument("version", "v", "Displays the current Calco version.");
 	registerArgument("license", "", "Display the license message.");
 
 }

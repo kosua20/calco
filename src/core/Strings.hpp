@@ -3,7 +3,7 @@
 const std::string versionMessage = "Calco version 1.0";
 
 const std::string licenseMessage = "Calco is licensed under the MIT license (see below).\n"
-"Calco would not exist without the tremendous help of the following libraries: imgui, implot, gl3w, glfw, glm"
+"Calco would not exist without the tremendous help of the following libraries: imgui, implot, gl3w, glfw, glm\n"
 "MIT License\n"
 "\n"
 "Copyright (c) 2022 Simon Rodriguez\n"
