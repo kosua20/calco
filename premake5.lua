@@ -80,6 +80,10 @@ project("CalcoApp")
 	files({"src/core/**", "src/libs/**.hpp", "src/libs/*/*.cpp", "src/libs/**.h", "src/libs/*/*.c", "src/app/**", "premake5.lua"})
 	removefiles({"**.DS_STORE", "**.thumbs"})
 
+	-- per platform files
+	filter("system:windows")
+		files({"resources/windows/*"})
+
 	links({"sr_gui", "glfw3"})
 
 	-- Libraries for each platform.
