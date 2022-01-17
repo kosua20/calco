@@ -23,7 +23,7 @@ FunctionGraph& Grapher::addOrUpdateFunction(const std::string& name, const Docum
 	const size_t funcCount = _functions.size();
 	for(size_t fid = 0; fid < funcCount; ++fid){
 		if(_functions[fid].name == name){
-			existingID = fid;
+			existingID = int(fid);
 			break;
 		}
 	}
@@ -206,12 +206,12 @@ bool Grapher::display(Calculator& calculator){
 		// Display options.
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3, 0.5));
 		if(ImGui::Button("Center")){
-			const float minX = _currentRect.X.Min;
-			const float maxX = _currentRect.X.Max;
-			const float minY = _currentRect.Y.Min;
-			const float maxY = _currentRect.Y.Max;
-			float newX = glm::max(abs(minX), abs(maxX));
-			float newY = glm::max(abs(minY), abs(maxY));
+			const double minX = _currentRect.X.Min;
+			const double maxX = _currentRect.X.Max;
+			const double minY = _currentRect.Y.Min;
+			const double maxY = _currentRect.Y.Max;
+			const double newX = glm::max(abs(minX), abs(maxX));
+			const double newY = glm::max(abs(minY), abs(maxY));
 			ImPlot::SetNextAxesLimits(-newX, newX, -newY, newY, ImPlotCond_Always);
 		}
 		ImGui::SameLine();
@@ -236,7 +236,7 @@ bool Grapher::display(Calculator& calculator){
 
 			const float aspectRatio =  float(_currentRect.Y.Max - _currentRect.Y.Min) / float(_currentRect.X.Max - _currentRect.X.Min);
 
-			const size_t ySampleCount = glm::floor(float(_sampleCount) * aspectRatio);
+			const size_t ySampleCount = size_t(glm::floor(float(_sampleCount) * aspectRatio));
 			_ys.resize(ySampleCount);
 
 			for(int i = 0; i < _sampleCount; ++i){
@@ -347,9 +347,9 @@ bool Grapher::display(Calculator& calculator){
 				ImPlot::PushStyleColor(ImPlotCol_Line, graph.color);
 
 				if(graph.type == FunctionGraph::Type::FUNCTION){
-					ImPlot::PlotLine(graph.name.c_str(), _xs.data(), graph.values.data(), graph.valuesCount);
+					ImPlot::PlotLine(graph.name.c_str(), _xs.data(), graph.values.data(), int(graph.valuesCount));
 				} else if(graph.type == FunctionGraph::Type::DOMAIN){
-					ImPlot::PlotScatter(graph.name.c_str(), &graph.values[0], &graph.values[1], graph.valuesCount, 0, sizeof(double) * 2);
+					ImPlot::PlotScatter(graph.name.c_str(), &graph.values[0], &graph.values[1], int(graph.valuesCount), 0, sizeof(double) * 2);
 				}
 				ImPlot::PopStyleColor();
 			}
