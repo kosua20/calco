@@ -74,13 +74,13 @@ Value FunctionsLibrary::funcPow(const std::vector<Value>& args, ExpEval& evaluat
 		case Value::BOOL:
 			return glm::pow(x.b, e.b);
 		case Value::INTEGER:
-			return glm::min(x.i, e.i);
+			return glm::pow(x.i, e.i);
 		case Value::FLOAT:
-			return glm::min(x.f, e.f);
+			return glm::pow(x.f, e.f);
 		case Value::VEC3:
-			return glm::min(x.v3, e.v3);
+			return glm::pow(x.v3, e.v3);
 		case Value::VEC4:
-			return glm::min(x.v4, e.v4);
+			return glm::pow(x.v4, e.v4);
 		default:
 			break;
 	}
