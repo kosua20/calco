@@ -23,6 +23,10 @@
 #include "fonts/font_data_Inconsolata.h"
 #include "fonts/font_data_Lato.h"
 
+#ifdef _WIN32
+// Avoid command prompt appearing on startup
+#pragma comment(linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"")
+#endif
 
 GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 
