@@ -84,6 +84,8 @@ project("CalcoApp")
 	filter("system:windows")
 		files({"resources/windows/*"})
 
+	filter({})
+	
 	links({"sr_gui", "glfw3"})
 
 	-- Libraries for each platform.
