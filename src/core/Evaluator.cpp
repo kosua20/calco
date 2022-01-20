@@ -553,7 +553,7 @@ Value ExpEval::bOpBoolAnd(const Value& l, const Value& r){
 	if(!convertValues(l, r, Value::BOOL, outl, outr)){
 		return false;
 	}
-	return outl.b || outr.b;
+	return outl.b && outr.b;
 }
 
 Value ExpEval::bOpBoolXor(const Value& l, const Value& r){
