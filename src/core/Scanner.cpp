@@ -139,6 +139,11 @@ Status Scanner::scan(){
 						++position;
 					}
 				}
+				// There might be an f or an h afterwards
+				if(valid(position) && (at(position) == 'f' || at(position) == 'h')){
+					isFloat = true;
+					++position;
+				}
 			}
 			// Read the number.
 			const size_t tokenSize = position - startPosition;
