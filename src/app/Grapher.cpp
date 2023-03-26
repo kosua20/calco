@@ -336,7 +336,7 @@ bool Grapher::display(Calculator& calculator){
 
 		ImGui::BeginChild("##Function view", ImVec2(0, 0));
 
-		if(ImPlot::BeginPlot("My Plot", ImVec2(-1,-1), ImPlotFlags_NoTitle | ImPlotFlags_NoLegend |  ImPlotFlags_AntiAliased)) {
+		if(ImPlot::BeginPlot("My Plot", ImVec2(-1,-1), ImPlotFlags_NoTitle | ImPlotFlags_NoLegend )) {
 			ImPlot::SetupAxes(NULL, NULL);
 			ImPlot::SetupFinish();
 			for(const auto& graph : _functions){

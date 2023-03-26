@@ -580,11 +580,12 @@ int main(int argc, char** argv){
 			// Print all lines.
 			const int selectedLine = printLines(state.lines, style, true);
 			if(selectedLine >= 0){
-				// Store selected line in clipboard.
 				const std::string& newContent = state.lines[selectedLine].fullText;
-				//ImGui::SetClipboardText(newContent.c_str());
 
 				if(ImGui::IsMouseDoubleClicked(0)){
+					// Store selected line in clipboard.
+					ImGui::SetClipboardText(newContent.c_str());
+				} else {
 					// Register text to insert, will be done in the text field conitnuous callback.
 					state.shouldInsert = true;
 					state.textToInsert = newContent;
@@ -599,6 +600,10 @@ int main(int argc, char** argv){
 			if(ImGui::GetScrollY() >= ImGui::GetScrollMaxY()){
 				ImGui::SetScrollHereY(1.0f);
 			}
+			if(ImGui::IsKeyPressed(ImGuiKey_PageDown)){
+				ImGui::SetScrollHereY(1.f);
+			}
+
 			ImGui::EndChild();
 			ImGui::Separator();
 
