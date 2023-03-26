@@ -69,7 +69,7 @@ project("CalcoTool")
 	removefiles({"**.DS_STORE", "**.thumbs"})
 	
 
-project("CalcoApp")
+project("Calco")
 	
 	CommonFlags()
 
