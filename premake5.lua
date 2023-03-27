@@ -30,7 +30,6 @@ workspace("Calco")
 -- Projects	
 
 function CommonFlags()
-	kind("ConsoleApp")
 	language("C++")
 	cppdialect("C++17")
 	
@@ -59,6 +58,7 @@ group("Calco")
 
 project("CalcoTool")
 	
+	kind("ConsoleApp")
 	CommonFlags()
 
 	includedirs({"src/"})
@@ -71,6 +71,7 @@ project("CalcoTool")
 
 project("Calco")
 	
+	kind("WindowedApp")
 	CommonFlags()
 
 	includedirs({"src/"})
@@ -81,10 +82,13 @@ project("Calco")
 	removefiles({"**.DS_STORE", "**.thumbs"})
 
 	-- per platform files
-	filter("system:windows")
+	filter("action:vs*")
 		files({"resources/windows/*"})
 
-	filter({})
+	filter("action:xcode*")
+		files({"resources/macos/*"})
+		
+   filter({})
 	
 	links({"sr_gui", "glfw3"})
 

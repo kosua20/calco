@@ -42,6 +42,7 @@ GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 	glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
 	glfwWindowHint(GLFW_FOCUSED, GLFW_TRUE);
 	glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
+
 	const GLFWvidmode * mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 	const unsigned int ww = std::max( mode->width/2, w);
 	const unsigned int hh = std::max( mode->height/2, h);
@@ -397,11 +398,11 @@ int main(int argc, char** argv){
 		return 0;
 	}
 
-	// Load settings.
 	UIStyle style;
-	style.loadFromFile(config.settingsPath);
-
 	GLFWwindow* window = createWindow(830, 620, style);
+
+	// Load settings after creating the window, as the current directory might have changed.
+	style.loadFromFile(config.settingsPath);
 
 	if(!window){
 		Log::Error() << "Unable to create window." << std::endl;
