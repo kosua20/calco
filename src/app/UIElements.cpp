@@ -13,14 +13,14 @@ UIStyle::UIStyle() {
 }
 
 void UIStyle::resetColors() {
-	backgroundColor = ImVec4(0.137255f, 0.031373f, 0.105882f, 1.0f);
+	backgroundColor = ImVec4(0.107f, 0.107f, 0.107f, 1.0f);
 	errorColor = ImVec4(0.8f, 0.2f, 0.1f, 1.0f);
 	wordColors[Calculator::Word::LITERAL] = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-	wordColors[Calculator::Word::VARIABLE] = ImVec4(0.258824f, 0.545098f, 0.000000f, 1.0f);
-	wordColors[Calculator::Word::FUNCTION] = ImVec4(0.635294f, 0.835294f, 0.113725f, 1.0f);
-	wordColors[Calculator::Word::OPERATOR] = ImVec4(0.713726f, 0.560784f, 0.000000f, 1.0f);
-	wordColors[Calculator::Word::SEPARATOR] = ImVec4(0.603922f, 0.415686f, 0.600000f, 1.0f);
-	wordColors[Calculator::Word::RESULT] = ImVec4(0.349020f, 0.556863f, 0.776471f, 1.0f);
+	wordColors[Calculator::Word::VARIABLE] = ImVec4(0.0f, 0.706f, 0.714f, 1.0f);
+	wordColors[Calculator::Word::FUNCTION] = ImVec4(0.114f, 0.566f, 0.835f, 1.0f);
+	wordColors[Calculator::Word::OPERATOR] = ImVec4(0.0f, 0.494f, 0.545f, 1.0f);
+	wordColors[Calculator::Word::SEPARATOR] = ImVec4(0.416f, 0.505f, 0.604f, 1.0f);
+	wordColors[Calculator::Word::RESULT] = ImVec4(0.051f, 0.612f, 0.729f, 1.0f);
 }
 
 void UIStyle::loadFromFile(const std::string& path) {
