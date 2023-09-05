@@ -97,7 +97,7 @@ project("Calco")
 		links({"OpenGL.framework", "Cocoa.framework", "IOKit.framework", "CoreVideo.framework", "AppKit.framework"})
 
 	filter("system:windows")
-		links({"opengl32", "User32", "Comdlg32", "Comctl32", "runtimeobject"})
+		links({"opengl32", "User32", "Comdlg32", "Comctl32", "Shell32", "runtimeobject"})
 
 	filter("system:linux")
 		links({"GL", "X11", "Xi", "Xrandr", "Xxf86vm", "Xinerama", "Xcursor", "Xext", "Xrender", "Xfixes", "xcb", "Xau", "Xdmcp", "rt", "m", "pthread", "dl", liballLibs})
