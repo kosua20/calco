@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  release:
+    types: 
+      - published
+
+jobs:
+  build:
+    env:
+      PREMAKE_URL: https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/premake-5.0.0-beta2
+
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-20.04
+            premake-opts: gmake2
+            asset_name: Calco-ubuntu20.zip
+          - os: windows-2019
+            premake-opts: vs2019
+            asset_name: Calco-windows-64bits.zip
+          - os: macos-11
+            premake-opts: xcode4
+            asset_name: Calco-macos.zip
+    
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Dependencies for ubuntu
+        if: startsWith(matrix.os, 'ubuntu')
+        shell: bash
+        run: |
+          sudo apt-get update -y && sudo apt-get install -yq xorg-dev libgtk-3-dev libnotify-dev
+          wget -O premake.tar.gz ${PREMAKE_URL}-linux.tar.gz
+          tar -xzf premake.tar.gz
+
+      - name: Dependencies for macOS
+        if: startsWith(matrix.os, 'macos')
+        shell: bash
+        run: |
+          brew install wget
+          wget -O premake.tar.gz ${PREMAKE_URL}-macosx.tar.gz
+          tar -xzf premake.tar.gz
+
+      - name: Dependencies for Windows
+        if: startsWith(matrix.os, 'windows')
+        shell: bash
+        run: |
+          choco install wget zip
+          wget -O premake.zip ${PREMAKE_URL}-windows.zip
+          7z e premake.zip
+
+      - name: Configure
+        shell: bash
+        working-directory: ${{github.workspace}}
+        run: |
+          ./premake5 ${{matrix.premake-opts}}
+
+      - name: Build using Make
+        if: ${{matrix.premake-opts == 'gmake2' }}
+        working-directory: ${{github.workspace}}/build
+        shell: bash
+        run: |
+          make Calco
+          chmod +x Calco/Release/Calco
+          zip -r -j release.zip Calco/Release/Calco
+      
+      - name: Build using MSVC
+        if: ${{matrix.premake-opts == 'vs2019'}}
+        working-directory: ${{github.workspace}}/build
+        shell: cmd
+        run: |
+          "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe" .\Calco.sln -t:Calco\Calco -nologo -v:minimal -p:Configuration=Release -p:Platform=x64
+          zip -j release.zip Calco/Release/Calco.exe
+
+      - name: Build using Xcode
+        if: ${{matrix.premake-opts == 'xcode4'}}
+        working-directory: ${{github.workspace}}/build
+        shell: bash
+        run: |
+          xcodebuild -workspace Calco.xcworkspace -scheme Calco -arch x86_64 -arch arm64 only_active_arch=no -configuration Release
+          cp -r Calco/Release/Calco.app Calco.app
+          zip -r release.zip Calco.app
+
+      - name: Prepare asset for release
+        working-directory: ${{github.workspace}}/build
+        shell: bash
+        run: mv release.zip ${{matrix.asset_name}}
+
+      - name: Upload asset for release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/${{matrix.asset_name}}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+
+
+
