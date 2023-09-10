@@ -5,6 +5,7 @@
 #include "core/system/TextUtilities.hpp"
 
 #include <iostream>
+#include <cstring>
 
 
 bool queryLineFromCIN(char* buffer, int size) {

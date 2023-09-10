@@ -528,8 +528,12 @@ int main(int argc, char** argv){
 				}
 
 				if(ImGui::BeginMenu("About")){
-					ImGui::Text( "%s", versionMessage.c_str() );
-					ImGui::Text( "© Simon Rodriguez 2022" );
+					if(ImGui::MenuItem(versionMessage.c_str())){
+						sr_gui_open_in_browser("https://github.com/kosua20/Calco");
+					}
+					if(ImGui::MenuItem("© Simon Rodriguez 2022")){
+						sr_gui_open_in_browser("http://simonrodriguez.fr");
+					}
 					ImGui::EndMenu();
 				}
 				ImGui::EndMainMenuBar();
