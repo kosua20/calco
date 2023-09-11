@@ -7,8 +7,8 @@ public:
 
 	explicit CalcoConfig(const std::vector<std::string> & argv) ;
 
-	std::string historyPath = "history.calco";
-	std::string settingsPath = "settings.calco";
+	std::string historyPath;
+	std::string settingsPath;
 
 	// Messages.
 	bool version = false;
