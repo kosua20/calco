@@ -23,5 +23,6 @@ public:
 
 	static bool fileExists(const std::string& path);
 
+	static bool createDirectory( const std::string& directory );
 	
 };

@@ -38,6 +38,22 @@ std::string narrow(char * str) {
 
 #endif
 
+#ifdef _WIN32
+
+bool System::createDirectory( const std::string& directory )
+{
+	std::wstring wideDir = widen( directory );
+	return CreateDirectoryW( wideDir.c_str(), nullptr ) != 0;
+}
+
+#else
+
+bool System::createDirectory( const std::string& directory )
+{
+	return mkdir( directory.c_str(), S_IRWXU | S_IRWXG | S_IRWXO ) == 0;
+}
+
+#endif
 
 void System::ping() {
 	Log::Info() << '\a' << std::endl;
