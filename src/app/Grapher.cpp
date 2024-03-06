@@ -349,7 +349,7 @@ bool Grapher::display(Calculator& calculator){
 				if(graph.type == FunctionGraph::Type::FUNCTION){
 					ImPlot::PlotLine(graph.name.c_str(), _xs.data(), graph.values.data(), int(graph.valuesCount));
 				} else if(graph.type == FunctionGraph::Type::DOMAIN){
-					ImPlot::PlotScatter(graph.name.c_str(), &graph.values[0], &graph.values[1], int(graph.valuesCount), 0, sizeof(double) * 2);
+					ImPlot::PlotScatter(graph.name.c_str(), &graph.values[0], &graph.values[1], int(graph.valuesCount), 0, 0, 2 * sizeof(double));
 				}
 				ImPlot::PopStyleColor();
 			}
