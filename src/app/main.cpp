@@ -455,8 +455,6 @@ int main(int argc, char** argv){
 
 	sr_gui_init();
 
-	
-
 	const unsigned int winFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar;
 
 	char buffer[1024];

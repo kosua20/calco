@@ -48,7 +48,7 @@ bool System::createDirectory( const std::string& directory )
 	std::wstring wideDir = widen( directory );
 	return CreateDirectoryW( wideDir.c_str(), nullptr ) != 0;
 #elif defined(__EMSCRIPTEN__)
-	EM_ASM(FS.mkdir(UTF8ToString($0)), directory.c_str());
+	//EM_ASM(FS.mkdir(UTF8ToString($0)), directory.c_str());
     return true;
 #else
 	return mkdir( directory.c_str(), S_IRWXU | S_IRWXG | S_IRWXO ) == 0;
