@@ -10,13 +10,24 @@
 #include "core/system/System.hpp"
 #include "core/system/TextUtilities.hpp"
 
-#include <gl3w/gl3w.h>
+#if defined(__EMSCRIPTEN__)
+    #include <emscripten/emscripten.h>
+    #include <emscripten/html5.h>
+	#define GL_GLEXT_PROTOTYPES
+	#define EGL_EGLEXT_PROTOTYPES
+	#define IMGUI_IMPL_OPENGL_ES3
+#else
+	#define GL_VERSION_3_2
+	#include <gl3w/gl3w.h>
+#endif
+
 #include <GLFW/glfw3.h>
-#include <sr_gui/sr_gui.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
+
 #include <implot/implot.h>
+#include <sr_gui/sr_gui.h>
 
 #include <unordered_map>
 
@@ -35,13 +46,18 @@ GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 		return NULL;
 	}
 
+#if defined(__EMSCRIPTEN__)
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+#else
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
+#endif
 	glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
 	glfwWindowHint(GLFW_FOCUSED, GLFW_TRUE);
-	glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
 
 	const GLFWvidmode * mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 	const unsigned int ww = std::max( mode->width/2, w);
@@ -50,18 +66,21 @@ GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 	GLFWwindow* window = glfwCreateWindow(ww, hh, "Calco", NULL, NULL);
 
 	if(!window) {
+		Log::Error() << "No window" << std::endl;
 		glfwTerminate();
 		return NULL;
 	}
 
 	glfwMakeContextCurrent(window);
 
+#if !defined(__EMSCRIPTEN__)
 	if(gl3wInit()) {
 		return NULL;
 	}
 	if(!gl3wIsSupported(3, 2)) {
 		return NULL;
 	}
+#endif
 
 	glfwSwapInterval(1);
 
@@ -87,7 +106,7 @@ GLFWwindow* createWindow(int w, int h, UIStyle& uiStyle) {
 	uiStyle.consoleFont = io.Fonts->AddFont(&fontConsole);
 
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
-	ImGui_ImplOpenGL3_Init("#version 330");
+	ImGui_ImplOpenGL3_Init(nullptr);
 
 	ImGui::StyleColorsDark();
 
@@ -385,7 +404,29 @@ void saveStateToFile(const std::string& path, const UIState& state, const Calcul
 	file.close();
 }
 
+#if defined(__EMSCRIPTEN__)
+
+
+void mainLoop(void * function){
+	std::function<void()>* processFrame = (std::function<void()>*)function;
+	(*processFrame)();
+}
+
+void prepareFilesystem(){
+	EM_ASM(
+        FS.mkdir('/Calco');
+        FS.mount(IDBFS, { autoPersist: true }, '/Calco');
+        FS.syncfs(true, function (err) { });
+    );
+}
+
+#endif
+
 int main(int argc, char** argv){
+
+#if defined(__EMSCRIPTEN__)
+	prepareFilesystem();
+#endif
 
 	CalcoConfig config(std::vector<std::string>(argv, argv+argc));
 	if(config.version){
@@ -402,7 +443,7 @@ int main(int argc, char** argv){
 	}
 
 	UIStyle style;
-	GLFWwindow* window = createWindow(830, 620, style);
+	GLFWwindow* window = createWindow(1280, 720, style);
 
 	// Load settings after creating the window, as the current directory might have changed.
 	style.loadFromFile(config.settingsPath);
@@ -414,7 +455,7 @@ int main(int argc, char** argv){
 
 	sr_gui_init();
 
-	int winW, winH;
+	
 
 	const unsigned int winFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar;
 
@@ -437,17 +478,21 @@ int main(int argc, char** argv){
 
 	}
 
+	//
 	bool shouldFocusTextField = true;
-
 	bool showCompilationResult = false;
 	bool failedCompilation = false;
 	std::string compilationMsg = "";
 
-	while(!glfwWindowShouldClose(window)) {
-
+#if defined(__EMSCRIPTEN__)
+	std::function<void()> processFrame = [&](){
+#else
+	while(!glfwWindowShouldClose(window))
+	{
+#endif
 		glfwWaitEventsTimeout(0.1);
-
 		// Screen resolution.
+		int winW, winH;
 		glfwGetWindowSize(window, &winW, &winH);
 
 		ImGui_ImplOpenGL3_NewFrame();
@@ -459,13 +504,11 @@ int main(int argc, char** argv){
 
 		bool openPopup = false;
 		bool updateDoc = false;
-		bool updateGraph = false;
 
 		// Menus and settings
 		{
 
 			if(ImGui::BeginMainMenuBar()){
-
 				if(ImGui::BeginMenu("File")){
 
 					if(ImGui::BeginMenu("Settings")){
@@ -509,10 +552,12 @@ int main(int argc, char** argv){
 							grapher.clear();
 						}
 					}
+				#if !defined(__EMSCRIPTEN__)
 					ImGui::Separator();
 					if(ImGui::MenuItem("Quit")){
 						glfwSetWindowShouldClose(window, GLFW_TRUE);
 					}
+				#endif
 					ImGui::EndMenu();
 				}
 
@@ -521,9 +566,7 @@ int main(int argc, char** argv){
 					ImGui::MenuItem("Variables", nullptr, &state.showVariables, true);
 					ImGui::MenuItem("Library", nullptr, &state.showLibrary, true);
 					ImGui::Separator();
-					if(ImGui::MenuItem("Grapher", nullptr, &state.showGrapher, true)){
-						updateGraph = state.showGrapher;
-					}
+					ImGui::MenuItem("Grapher", nullptr, &state.showGrapher, true);
 					ImGui::EndMenu();
 				}
 
@@ -534,6 +577,7 @@ int main(int argc, char** argv){
 					if(ImGui::MenuItem("© Simon Rodriguez 2022")){
 						sr_gui_open_in_browser("http://simonrodriguez.fr");
 					}
+					ImGui::Text("Size: %dx%d", winW, winH);
 					ImGui::EndMenu();
 				}
 				ImGui::EndMainMenuBar();
@@ -939,7 +983,14 @@ int main(int argc, char** argv){
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		
 		glfwSwapBuffers(window);
+	
+#if defined(__EMSCRIPTEN__)
+	};
+	emscripten_set_main_loop_arg(mainLoop, &processFrame, 0, true);
+#else
 	}
+#endif
+
 	// Save settings.
 	style.saveToFile(config.settingsPath);
 
