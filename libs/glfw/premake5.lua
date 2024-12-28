@@ -1,5 +1,5 @@
 
-project("glfw3")
+project("glfw3in")
 	kind("StaticLib")
 
 	language("C")

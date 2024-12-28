@@ -29,6 +29,9 @@ project("sr_gui")
 		buildoptions(libFlags)
 		files({"sr_gui_lin.c"})
 
+	filter({"system:emscripten"})
+		language("C")
+		files({"sr_gui_emscripten.c"})
    
 	filter({})
 
