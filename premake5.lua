@@ -1,4 +1,6 @@
--- On Linux We have to query the dependencies of gtk+3 for sr_gui, we do this on the host for now.
+require "emscripten"
+
+	-- On Linux We have to query the dependencies of gtk+3 for sr_gui, we do this on the host for now.
 if os.ishost("linux") then
 	listing, code = os.outputof("pkg-config --libs libnotify gtk+-3.0")
 	liballLibs = string.explode(string.gsub(listing, "-l", ""), " ")
@@ -17,6 +19,8 @@ workspace("Calco")
 
 	filter("system:macosx")
 		systemversion("10.12:latest")
+	filter("system:emscripten")
+		architecture("wasm32")
 	filter({})
 
 	-- Configuration specific settings.
@@ -49,6 +53,12 @@ function CommonFlags()
 		defines({ "_CRT_SECURE_NO_WARNINGS" })  
 	filter({})
 
+	-- Emscripten
+	filter("system:emscripten")
+		buildoptions({"-flto", "-O3"})
+		linkoptions({"-flto" , "-O3"})
+	filter({})
+
 end
 
 
@@ -67,9 +77,10 @@ project("CalcoTool")
 
 	includedirs({"src/"})
 	externalincludedirs({ "libs/", "src/libs" })
-
+	links({"sr_gui"})
 	-- common files
-	files({"src/core/**", "src/tool/**", "premake5.lua"})
+	includedirs({ "libs/", "src/libs" })
+	files({"src/core/**", "src/libs/glm/**.hpp", "src/libs/glm/*.cpp", "src/libs/glm/**.h", "src/libs/glm/*.c", "src/tool/**", "premake5.lua"})
 	removefiles({"**.DS_STORE", "**.thumbs"})
 	
 
@@ -79,7 +90,11 @@ project("Calco")
 	CommonFlags()
 
 	includedirs({"src/"})
-	externalincludedirs({ "libs/", "src/libs", "libs/glfw/include/" })
+	includedirs({ "libs/", "src/libs" })
+	
+	filter("system: not emscripten")
+		includedirs({ "libs/glfw/include/" })
+	filter({})
 
 	-- common files
 	files({"src/core/**", "src/libs/**.hpp", "src/libs/*/*.cpp", "src/libs/**.h", "src/libs/*/*.c", "src/app/**", "premake5.lua"})
@@ -94,7 +109,10 @@ project("Calco")
 		
    filter({})
 	
-	links({"sr_gui", "glfw3"})
+	filter("system:emscripten")
+		links({"sr_gui", "glfw3"})
+	filter("system:not emscripten")
+		links({"sr_gui", "glfw3in"})
 
 	-- Libraries for each platform.
 	filter("system:macosx")
@@ -106,6 +124,9 @@ project("Calco")
 	filter("system:linux")
 		links({"GL", "X11", "Xi", "Xrandr", "Xxf86vm", "Xinerama", "Xcursor", "Xext", "Xrender", "Xfixes", "xcb", "Xau", "Xdmcp", "rt", "m", "pthread", "dl", liballLibs})
 	
+	filter("system:emscripten")
+		linkoptions({"--sUSE_GLFW=3", "--sMAX_WEBGL_VERSION=2",  "--sMIN_WEBGL_VERSION=2", "-lidbfs.js", "--sFORCE_FILESYSTEM=1", "--shell-file ../resources/emscripten/shell_minimal.html" })
+		targetextension(".html")
 	filter({})
 
 

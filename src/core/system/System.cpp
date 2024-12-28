@@ -9,6 +9,10 @@
 #endif
 #include <iomanip>
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+#endif
+
 #ifdef _WIN32
 
 std::wstring widen(const std::string & str) {
@@ -38,22 +42,18 @@ std::string narrow(char * str) {
 
 #endif
 
-#ifdef _WIN32
-
 bool System::createDirectory( const std::string& directory )
 {
+#if defined(_WIN32)
 	std::wstring wideDir = widen( directory );
 	return CreateDirectoryW( wideDir.c_str(), nullptr ) != 0;
-}
-
+#elif defined(__EMSCRIPTEN__)
+	EM_ASM(FS.mkdir(UTF8ToString($0)), directory.c_str());
+    return true;
 #else
-
-bool System::createDirectory( const std::string& directory )
-{
 	return mkdir( directory.c_str(), S_IRWXU | S_IRWXG | S_IRWXO ) == 0;
-}
-
 #endif
+}
 
 void System::ping() {
 	Log::Info() << '\a' << std::endl;
